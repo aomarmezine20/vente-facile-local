@@ -143,7 +143,14 @@ export default function DocumentView() {
                 return (
                   <TableRow key={l.id}>
                     <TableCell>{p.sku}</TableCell>
-                    <TableCell>{l.description}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {p.imageDataUrl && (
+                          <img src={p.imageDataUrl} alt={l.description} className="h-10 w-10 rounded object-cover" />
+                        )}
+                        <span>{l.description}</span>
+                      </div>
+                    </TableCell>
                     <TableCell>{l.qty}</TableCell>
                     <TableCell>{fmtMAD(l.unitPrice)}</TableCell>
                     <TableCell>{fmtMAD(l.remiseAmount)}</TableCell>

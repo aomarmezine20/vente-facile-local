@@ -1,11 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { getDB } from "@/store/localdb";
+import { Link, Navigate } from "react-router-dom";
+import { getDB, getCurrentUser } from "@/store/localdb";
 import { fmtMAD } from "@/utils/format";
 import { FileText, ShoppingCart, Truck, Receipt, Warehouse } from "lucide-react";
 
 export default function Dashboard() {
+  const user = getCurrentUser();
+  if (user?.role !== "admin") return <Navigate to="/ventes/devis" replace />;
   const db = getDB();
   const totalStock = db.stock.reduce((sum, s) => sum + s.qty, 0);
   const ventes = db.documents.filter((d) => d.mode === "vente");

@@ -28,7 +28,12 @@ export function generateDocumentPdf(doc: Document) {
   if (company.email) pdf.text(company.email, 45, 34);
 
   pdf.setFontSize(16);
-  pdf.text(`${doc.mode === "vente" ? "Vente" : "Achat"} - ${doc.type}`, 150, 15, { align: "right" });
+  const typeMap: Record<string, Record<string, string>> = {
+    vente: { DV: "Devis", BC: "Bon de commande", BL: "Bon de livraison", BR: "Bon de retour", FA: "Facture" },
+    achat: { DV: "Devis", BC: "Bon de commande", BL: "Bon de réception", BR: "Bon de retour", FA: "Facture" },
+  };
+  const docLabel = `${doc.mode === "vente" ? "Vente" : "Achat"} — ${typeMap[doc.mode][doc.type]}`;
+  pdf.text(docLabel, 150, 15, { align: "right" });
   pdf.setFontSize(12);
   pdf.text(doc.code, 150, 22, { align: "right" });
   pdf.text(new Date(doc.date).toLocaleDateString(), 150, 28, { align: "right" });

@@ -1,13 +1,14 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct } from "@/store/localdb";
+import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct, getStock } from "@/store/localdb";
 import { Product, Depot, Client, Company } from "@/types";
 import { fmtMAD } from "@/utils/format";
 import { toast } from "@/hooks/use-toast";
+import { useLocation } from "react-router-dom";
 
 export default function AdminPage() {
   const [company, setCompanyState] = useState<Company>(getCompany());
@@ -15,6 +16,17 @@ export default function AdminPage() {
   const [depots, setDepots] = useState<Depot[]>(getDepots());
   const [clients, setClients] = useState<Client[]>(getClients());
   const users = getUsers();
+
+  const location = useLocation();
+  const [tab, setTab] = useState<string>(() => (window.location.hash?.slice(1) || "societe"));
+  useEffect(() => {
+    const h = location.hash?.slice(1) || "societe";
+    if (h !== tab) setTab(h);
+  }, [location.hash]);
+  const onTabChange = (v: string) => {
+    setTab(v);
+    history.replaceState(null, "", `/admin#${v}`);
+  };
 
   const logoInput = useRef<HTMLInputElement>(null);
 
@@ -59,14 +71,14 @@ export default function AdminPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Administration</h1>
-      <Tabs defaultValue="societe" className="w-full">
-        <TabsList>
-          <TabsTrigger value="societe">Société</TabsTrigger>
-          <TabsTrigger value="produits">Produits</TabsTrigger>
-          <TabsTrigger value="depots">Dépôts</TabsTrigger>
-          <TabsTrigger value="clients">Clients</TabsTrigger>
-          <TabsTrigger value="utilisateurs">Utilisateurs</TabsTrigger>
-        </TabsList>
+        <Tabs value={tab} onValueChange={onTabChange} className="w-full">
+          <TabsList>
+            <TabsTrigger value="societe">Société</TabsTrigger>
+            <TabsTrigger value="produits">Produits</TabsTrigger>
+            <TabsTrigger value="depots">Dépôts</TabsTrigger>
+            <TabsTrigger value="clients">Clients</TabsTrigger>
+            <TabsTrigger value="utilisateurs">Utilisateurs</TabsTrigger>
+          </TabsList>
 
         <TabsContent value="societe">
           <Card>
@@ -113,6 +125,7 @@ export default function AdminPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Photo</TableHead>
                     <TableHead>Réf.</TableHead>
                     <TableHead>Nom</TableHead>
                     <TableHead>Unité</TableHead>
@@ -122,6 +135,29 @@ export default function AdminPage() {
                 <TableBody>
                   {products.map((p) => (
                     <TableRow key={p.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {p.imageDataUrl && (
+                            <img src={p.imageDataUrl} alt={p.name} className="h-10 w-10 rounded object-cover" />
+                          )}
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                p.imageDataUrl = reader.result as string;
+                                upsertProduct(p);
+                                setProducts(getProducts());
+                                toast({ title: "Image article mise à jour" });
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Input value={p.sku} onChange={(e) => { p.sku = e.target.value; upsertProduct(p); setProducts(getProducts()); }} />
                       </TableCell>
@@ -165,6 +201,39 @@ export default function AdminPage() {
                   ))}
                 </TableBody>
               </Table>
+
+              <div className="mt-6">
+                <h3 className="mb-2 text-sm font-medium">Stocks par dépôt</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Dépôt</TableHead>
+                      <TableHead>Réf.</TableHead>
+                      <TableHead>Article</TableHead>
+                      <TableHead>Qté</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {getStock().map((s) => {
+                      const depot = depots.find((d) => d.id === s.depotId)?.name || s.depotId;
+                      const prod = products.find((p) => p.id === s.productId);
+                      return (
+                        <TableRow key={`${s.depotId}-${s.productId}`}>
+                          <TableCell>{depot}</TableCell>
+                          <TableCell>{prod?.sku || s.productId}</TableCell>
+                          <TableCell className="flex items-center gap-2">
+                            {prod?.imageDataUrl && (
+                              <img src={prod.imageDataUrl} alt={prod.name} className="h-8 w-8 rounded object-cover" />
+                            )}
+                            <span>{prod?.name || "-"}</span>
+                          </TableCell>
+                          <TableCell>{s.qty}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

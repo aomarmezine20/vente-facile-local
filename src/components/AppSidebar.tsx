@@ -10,6 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { getCurrentUser } from "@/store/localdb";
 
 const sections = [
   {
@@ -50,33 +51,43 @@ const sections = [
 
 export function AppSidebar() {
   const location = useLocation();
-  const currentPath = location.pathname;
+  const currentFull = location.pathname + location.hash;
+  const user = getCurrentUser();
 
   return (
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarContent>
-        {sections.map((section) => (
-          <SidebarGroup key={section.label}>
-            <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {section.items.map((item) => {
-                  const active = currentPath === item.url;
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild isActive={active}>
-                        <NavLink to={item.url} end>
-                          <item.icon className="mr-2 h-4 w-4" />
-                          <span>{item.title}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {sections
+          .filter(
+            (section) =>
+              !(
+                (section.label === "Tableau de bord" || section.label === "Administration") &&
+                user?.role !== "admin"
+              )
+          )
+          .map((section) => (
+            <SidebarGroup key={section.label}>
+              <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {section.items.map((item) => {
+                    const active = currentFull === item.url;
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild isActive={active}>
+                          <NavLink to={item.url} end>
+                            <item.icon className="mr-2 h-4 w-4" />
+                            <span>{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
+
       </SidebarContent>
     </Sidebar>
   );
