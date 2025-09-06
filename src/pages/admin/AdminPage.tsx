@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct, getStock, adjustStock } from "@/store/localdb";
+import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct, getStock, adjustStock, resetDB } from "@/store/localdb";
 import { Product, Depot, Client, Company } from "@/types";
 import { fmtMAD } from "@/utils/format";
 import { toast } from "@/hooks/use-toast";
@@ -109,8 +109,19 @@ export default function AdminPage() {
                   <Input ref={logoInput} type="file" accept="image/*" onChange={onLogoChange} />
                 </div>
               </div>
-              <div className="md:col-span-2">
+              <div className="md:col-span-2 flex items-center gap-2">
                 <Button onClick={saveCompany}>Sauvegarder</Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    if (window.confirm("Réinitialiser la base de données ? Tous les documents et compteurs seront effacés.")) {
+                      resetDB();
+                      window.location.reload();
+                    }
+                  }}
+                >
+                  Réinitialiser la base
+                </Button>
               </div>
             </CardContent>
           </Card>

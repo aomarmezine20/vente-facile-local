@@ -45,11 +45,11 @@ const App = () => (
                   <Route path="/ventes/factures" element={<DocumentsList mode="vente" type="FA" />} />
 
                   {/* Achats */}
-                  <Route path="/achats/devis" element={<AchatDocumentsList />} />
+                  <Route path="/achats/devis" element={<AchatDocumentsList type="DV" />} />
                   <Route path="/achats/devis/nouveau" element={<AchatDocumentForm />} />
-                  <Route path="/achats/bc" element={<AchatDocumentsList />} />
-                  <Route path="/achats/bl" element={<AchatDocumentsList />} />
-                  <Route path="/achats/factures" element={<AchatDocumentsList />} />
+                  <Route path="/achats/bc" element={<AchatDocumentsList type="BC" />} />
+                  <Route path="/achats/bl" element={<AchatDocumentsList type="BL" />} />
+                  <Route path="/achats/factures" element={<AchatDocumentsList type="FA" />} />
 
                   {/* Document detail (commun) */}
                   <Route path="/document/:id" element={<DocumentView />} />

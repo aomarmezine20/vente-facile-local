@@ -26,10 +26,10 @@ function nextType(t: DocType): DocType | null {
   return null;
 }
 
-export default function AchatDocumentsList() {
+export default function AchatDocumentsList({ type: propType }: { type?: DocType } = {}) {
   const navigate = useNavigate();
   const { type } = useParams<{ type: DocType }>();
-  const actualType = (type as DocType) || "DV";
+  const actualType = (propType as DocType) || (type as DocType) || "DV";
   const documents = useMemo(() => getDocuments({ mode: "achat", type: actualType }), [actualType, getDB().documents.length]);
   const clients = getClients();
   const depots = getDepots();

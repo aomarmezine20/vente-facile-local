@@ -129,3 +129,8 @@ export function adjustStock(depotId: string, productId: string, deltaQty: number
     else db.stock.push({ depotId, productId, qty: deltaQty });
   });
 }
+
+export function resetDB() {
+  localStorage.removeItem(KEY);
+}
+
