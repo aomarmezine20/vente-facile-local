@@ -1,11 +1,15 @@
-import { Link, useParams } from "react-router-dom";
+import { useMemo } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { getDocuments, getClients, getDepots } from "@/store/localdb";
-import { DocType } from "@/types";
-import { fmtMAD } from "@/utils/format";
+import { getDocuments, getClients, getDepots, getDB, nextCode, upsertDocument, adjustStock, deleteDocument, getCurrentUser } from "@/store/localdb";
+import { DocType, Document, DocumentStatus } from "@/types";
+import { fmtMAD, todayISO } from "@/utils/format";
+import { generateDocumentPdf } from "@/pdf/pdf";
+import { toast } from "@/hooks/use-toast";
+import { Trash2 } from "lucide-react";
 
 const typeLabels: Record<DocType, string> = {
   DV: "Devis",
@@ -15,12 +19,79 @@ const typeLabels: Record<DocType, string> = {
   FA: "Facture",
 };
 
+function nextType(t: DocType): DocType | null {
+  if (t === "DV") return "BC";
+  if (t === "BC") return "BL";
+  if (t === "BL") return "FA";
+  return null;
+}
+
 export default function AchatDocumentsList() {
+  const navigate = useNavigate();
   const { type } = useParams<{ type: DocType }>();
   const actualType = (type as DocType) || "DV";
-  const documents = getDocuments({ mode: "achat", type: actualType });
+  const documents = useMemo(() => getDocuments({ mode: "achat", type: actualType }), [actualType, getDB().documents.length]);
   const clients = getClients();
   const depots = getDepots();
+  const currentUser = getCurrentUser();
+  const isAdmin = currentUser?.role === "admin";
+
+  const isTransformed = (docId: string): boolean => {
+    return getDB().documents.some(d => d.refFromId === docId);
+  };
+
+  const transform = (doc: Document) => {
+    const t = nextType(doc.type);
+    if (!t) return;
+    
+    // Check if already transformed
+    if (isTransformed(doc.id)) {
+      toast({ title: "Erreur", description: "Ce document a déjà été transformé.", variant: "destructive" });
+      return;
+    }
+    
+    const id = `doc_${Date.now()}`;
+    const code = nextCode(doc.mode, t);
+    const date = todayISO();
+    
+    // Set appropriate status based on type
+    let status: DocumentStatus = "valide";
+    if (t === "BC") status = "commande";
+    if (t === "BL") status = "livre";
+    if (t === "FA") status = "facture";
+    
+    const newDoc: Document = { ...doc, id, code, type: t, date, status, refFromId: doc.id };
+    upsertDocument(newDoc);
+
+    // Update original document status
+    const updatedOriginal = { ...doc, status };
+    upsertDocument(updatedOriginal);
+
+    // Stock movement on BL for purchases (add to stock)
+    if (t === "BL" && doc.depotId) {
+      for (const l of doc.lines) {
+        adjustStock(doc.depotId, l.productId, l.qty);
+      }
+    }
+
+    toast({ title: `Transformé en ${t}`, description: `Document ${newDoc.code} créé.` });
+    navigate(`/document/${newDoc.id}`);
+  };
+
+  const handleDelete = (doc: Document) => {
+    if (!isAdmin) {
+      toast({ title: "Erreur", description: "Seul l'administrateur peut supprimer des documents.", variant: "destructive" });
+      return;
+    }
+    
+    if (isTransformed(doc.id)) {
+      toast({ title: "Erreur", description: "Impossible de supprimer un document déjà transformé.", variant: "destructive" });
+      return;
+    }
+    
+    deleteDocument(doc.id);
+    toast({ title: "Document supprimé", description: `Le document ${doc.code} a été supprimé.` });
+  };
 
   const statusVariant = (status: string) => {
     switch (status) {
@@ -71,13 +142,14 @@ export default function AchatDocumentsList() {
                 <TableHead>Dépôt</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead>Total</TableHead>
-                <TableHead></TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {documents.map((doc) => {
                 const total = doc.lines.reduce((s, l) => s + (l.unitPrice - l.remiseAmount) * l.qty, 0);
                 const depot = doc.depotId ? depots.find((d) => d.id === doc.depotId)?.name : "-";
+                const transformed = isTransformed(doc.id);
                 
                 return (
                   <TableRow key={doc.id}>
@@ -91,10 +163,23 @@ export default function AchatDocumentsList() {
                       </Badge>
                     </TableCell>
                     <TableCell>{fmtMAD(total)}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm" asChild>
+                    <TableCell className="space-x-2">
+                      <Button variant="secondary" size="sm" asChild>
                         <Link to={`/document/${doc.id}`}>Voir</Link>
                       </Button>
+                      {nextType(doc.type) && !transformed && (
+                        <Button size="sm" onClick={() => transform(doc)}>
+                          Transformer → {nextType(doc.type)}
+                        </Button>
+                      )}
+                      <Button variant="outline" size="sm" onClick={() => generateDocumentPdf(doc)}>
+                        PDF
+                      </Button>
+                      {isAdmin && !transformed && (
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(doc)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
