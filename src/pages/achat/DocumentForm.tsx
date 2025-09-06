@@ -6,18 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { getClients, getDepots, getProducts, nextCode, upsertClient, upsertDocument, getStock } from "@/store/localdb";
-import { Document, DocumentLine, Mode } from "@/types";
+import { getDepots, getProducts, nextCode, upsertDocument } from "@/store/localdb";
+import { Document, DocumentLine } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { toast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
 
-export default function DocumentForm({ mode }: { mode: Mode }) {
+export default function AchatDocumentForm() {
   const navigate = useNavigate();
   const products = getProducts();
   const depots = getDepots();
-  const stock = getStock();
-  const [clientId, setClientId] = useState<string | undefined>(getClients()[0]?.id);
   const [vendorName, setVendorName] = useState("");
   const [depotId, setDepotId] = useState<string | undefined>(depots[0]?.id);
   const [lines, setLines] = useState<DocumentLine[]>([]);
@@ -33,22 +30,8 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
   }, [lines]);
 
   const addLine = () => {
-    if (!newLine.productId || !depotId) return;
+    if (!newLine.productId) return;
     const p = products.find((x) => x.id === newLine.productId)!;
-    
-    // Check stock availability for sales
-    if (mode === "vente") {
-      const availableStock = stock.find(s => s.productId === newLine.productId && s.depotId === depotId)?.qty || 0;
-      const requestedQty = newLine.qty || 1;
-      if (availableStock < requestedQty) {
-        return toast({ 
-          title: "Stock insuffisant", 
-          description: `Stock disponible: ${availableStock} ${p.unit}. Quantité demandée: ${requestedQty} ${p.unit}`,
-          variant: "destructive"
-        });
-      }
-    }
-    
     const unitPrice = newLine.unitPrice ?? p.price;
     const l: DocumentLine = {
       id: `l_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -66,36 +49,34 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
 
   const save = () => {
     if (!depotId) return toast({ title: "Sélectionnez un dépôt" });
-    if (mode === "vente" && !clientId) return toast({ title: "Sélectionnez un client" });
-    if (mode === "achat" && !vendorName) return toast({ title: "Saisissez un fournisseur" });
+    if (!vendorName) return toast({ title: "Saisissez un fournisseur" });
 
     const id = `doc_${Date.now()}`;
-    const code = nextCode(mode, "DV");
+    const code = nextCode("achat", "DV");
     const doc: Document = {
       id,
       code,
       type: "DV",
-      mode,
+      mode: "achat",
       date: todayISO(),
       status: "brouillon",
       depotId,
-      clientId: mode === "vente" ? clientId : undefined,
-      vendorName: mode === "achat" ? vendorName : undefined,
+      vendorName,
       lines,
     };
     upsertDocument(doc);
-    toast({ title: "Devis enregistré", description: code });
+    toast({ title: "Devis achat enregistré", description: code });
     navigate(`/document/${id}`);
   };
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Nouveau devis — {mode === "vente" ? "Vente" : "Achat"}</h1>
+      <h1 className="text-xl font-semibold">Nouveau devis — Achat</h1>
       <Card>
         <CardHeader>
           <CardTitle>Informations</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm">Dépôt</label>
             <Select value={depotId} onValueChange={setDepotId}>
@@ -112,28 +93,10 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
             </Select>
           </div>
 
-          {mode === "vente" ? (
-            <div>
-              <label className="mb-1 block text-sm">Client</label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getClients().map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} ({c.type})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-sm">Fournisseur</label>
-              <Input value={vendorName} onChange={(e) => setVendorName(e.target.value)} placeholder="Nom du fournisseur" />
-            </div>
-          )}
+          <div>
+            <label className="mb-1 block text-sm">Fournisseur</label>
+            <Input value={vendorName} onChange={(e) => setVendorName(e.target.value)} placeholder="Nom du fournisseur" />
+          </div>
         </CardContent>
       </Card>
 
@@ -148,22 +111,11 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
                 <SelectValue placeholder="Article" />
               </SelectTrigger>
               <SelectContent>
-                {products.map((p) => {
-                  const availableStock = depotId ? stock.find(s => s.productId === p.id && s.depotId === depotId)?.qty || 0 : 0;
-                  const showStock = mode === "vente" && depotId;
-                  return (
-                    <SelectItem key={p.id} value={p.id}>
-                      <div className="flex items-center justify-between w-full">
-                        <span>{p.sku} — {p.name}</span>
-                        {showStock && (
-                          <Badge variant={availableStock > 0 ? "default" : "destructive"}>
-                            Stock: {availableStock}
-                          </Badge>
-                        )}
-                      </div>
-                    </SelectItem>
-                  );
-                })}
+                {products.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.sku} — {p.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Input

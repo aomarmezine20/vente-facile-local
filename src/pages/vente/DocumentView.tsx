@@ -3,8 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { adjustStock, getClients, getDepots, getDocument, getProducts, nextCode, upsertDocument } from "@/store/localdb";
-import { Document, DocType } from "@/types";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { adjustStock, getClients, getDepots, getDocument, getProducts, nextCode, upsertDocument, getDocuments } from "@/store/localdb";
+import { Document, DocType, DocumentStatus } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
 import { toast } from "@/hooks/use-toast";
@@ -31,13 +33,23 @@ export default function DocumentView() {
 
   if (!doc) return <div>Document introuvable.</div>;
 
+  // Check if document has already been transformed
+  const hasBeenTransformed = getDocuments().some(d => d.refFromId === doc.id);
+  const canTransform = nextType(doc.type) && !hasBeenTransformed;
+
   const transform = (doc: Document) => {
     const t = nextType(doc.type);
-    if (!t) return;
+    if (!t || hasBeenTransformed) return;
     const id = `doc_${Date.now()}`;
     const code = nextCode(doc.mode, t);
     const date = todayISO();
-    const newDoc: Document = { ...doc, id, code, type: t, date, status: "valide", refFromId: doc.id };
+    
+    let status: DocumentStatus = "valide";
+    if (t === "BC") status = "commande";
+    if (t === "BL") status = "livre";
+    if (t === "FA") status = "facture";
+    
+    const newDoc: Document = { ...doc, id, code, type: t, date, status, refFromId: doc.id };
     upsertDocument(newDoc);
 
     if (t === "BL" && doc.depotId) {
@@ -80,10 +92,27 @@ export default function DocumentView() {
         <h1 className="text-xl font-semibold">
           {doc.type} — {doc.code}
         </h1>
-        <div className="space-x-2">
-          {nextType(doc.type) && (
-            <Button onClick={() => transform(doc)}>Transformer → {nextType(doc.type)}</Button>
+        <div className="flex items-center space-x-2">
+          <Badge variant={doc.status === "comptabilise" ? "default" : "secondary"}>
+            {doc.status === "comptabilise" ? "Comptabilisée" : 
+             doc.status === "livre" ? "Livrée" :
+             doc.status === "commande" ? "Commandée" : 
+             doc.status === "facture" ? "Facturée" :
+             doc.status === "valide" ? "Validée" : "Brouillon"}
+          </Badge>
+          
+          {canTransform && (
+            <Button onClick={() => transform(doc)}>
+              {doc.type === "DV" ? "Transformer → BC" :
+               doc.type === "BC" ? "Transformer → BL" :
+               doc.type === "BL" ? "Transformer → FA" : "Transformer"}
+            </Button>
           )}
+          
+          {hasBeenTransformed && doc.type !== "FA" && (
+            <Badge variant="outline">Déjà transformé</Badge>
+          )}
+          
           {doc.type === "BL" && doc.mode === "vente" && (
             <Button variant="secondary" onClick={() => createBR(doc)}>
               Créer BR
@@ -144,11 +173,25 @@ export default function DocumentView() {
                   <TableRow key={l.id}>
                     <TableCell>{p.sku}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         {p.imageDataUrl && (
-                          <img src={p.imageDataUrl} alt={l.description} className="h-10 w-10 rounded object-cover" />
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <img src={p.imageDataUrl} alt={l.description} className="h-16 w-16 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity" />
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <img src={p.imageDataUrl} alt={l.description} className="w-full h-auto rounded-lg" />
+                              <div className="text-center mt-2">
+                                <h3 className="font-semibold">{p.name}</h3>
+                                <p className="text-sm text-muted-foreground">Référence: {p.sku}</p>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         )}
-                        <span>{l.description}</span>
+                        <div>
+                          <div className="font-medium">{l.description}</div>
+                          <div className="text-sm text-muted-foreground">Réf: {p.sku}</div>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>{l.qty}</TableCell>

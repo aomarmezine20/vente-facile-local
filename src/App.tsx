@@ -11,6 +11,8 @@ import Login from "./pages/Login";
 import DocumentsList from "./pages/vente/DocumentsList";
 import DocumentForm from "./pages/vente/DocumentForm";
 import DocumentView from "./pages/vente/DocumentView";
+import AchatDocumentsList from "./pages/achat/DocumentsList";
+import AchatDocumentForm from "./pages/achat/DocumentForm";
 import AdminPage from "./pages/admin/AdminPage";
 import runSeed from "./seed";
 
@@ -43,11 +45,11 @@ const App = () => (
                   <Route path="/ventes/factures" element={<DocumentsList mode="vente" type="FA" />} />
 
                   {/* Achats */}
-                  <Route path="/achats/devis" element={<DocumentsList mode="achat" type="DV" />} />
-                  <Route path="/achats/devis/nouveau" element={<DocumentForm mode="achat" />} />
-                  <Route path="/achats/bc" element={<DocumentsList mode="achat" type="BC" />} />
-                  <Route path="/achats/bl" element={<DocumentsList mode="achat" type="BL" />} />
-                  <Route path="/achats/factures" element={<DocumentsList mode="achat" type="FA" />} />
+                  <Route path="/achats/devis" element={<AchatDocumentsList />} />
+                  <Route path="/achats/devis/nouveau" element={<AchatDocumentForm />} />
+                  <Route path="/achats/bc" element={<AchatDocumentsList />} />
+                  <Route path="/achats/bl" element={<AchatDocumentsList />} />
+                  <Route path="/achats/factures" element={<AchatDocumentsList />} />
 
                   {/* Document detail (commun) */}
                   <Route path="/document/:id" element={<DocumentView />} />

@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct, getStock } from "@/store/localdb";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct, getStock, adjustStock } from "@/store/localdb";
 import { Product, Depot, Client, Company } from "@/types";
 import { fmtMAD } from "@/utils/format";
 import { toast } from "@/hooks/use-toast";
@@ -136,13 +137,25 @@ export default function AdminPage() {
                   {products.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           {p.imageDataUrl && (
-                            <img src={p.imageDataUrl} alt={p.name} className="h-10 w-10 rounded object-cover" />
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <img src={p.imageDataUrl} alt={p.name} className="h-16 w-16 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity" />
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl">
+                                <img src={p.imageDataUrl} alt={p.name} className="w-full h-auto rounded-lg" />
+                                <div className="text-center mt-2">
+                                  <h3 className="font-semibold">{p.name}</h3>
+                                  <p className="text-sm text-muted-foreground">Référence: {p.sku}</p>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           )}
                           <Input
                             type="file"
                             accept="image/*"
+                            className="text-xs"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
@@ -210,7 +223,8 @@ export default function AdminPage() {
                       <TableHead>Dépôt</TableHead>
                       <TableHead>Réf.</TableHead>
                       <TableHead>Article</TableHead>
-                      <TableHead>Qté</TableHead>
+                      <TableHead>Qté actuelle</TableHead>
+                      <TableHead>Ajuster stock</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -223,11 +237,65 @@ export default function AdminPage() {
                           <TableCell>{prod?.sku || s.productId}</TableCell>
                           <TableCell className="flex items-center gap-2">
                             {prod?.imageDataUrl && (
-                              <img src={prod.imageDataUrl} alt={prod.name} className="h-8 w-8 rounded object-cover" />
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <img src={prod.imageDataUrl} alt={prod.name} className="h-12 w-12 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity" />
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl">
+                                  <img src={prod.imageDataUrl} alt={prod.name} className="w-full h-auto rounded-lg" />
+                                  <div className="text-center mt-2">
+                                    <h3 className="font-semibold">{prod.name}</h3>
+                                    <p className="text-sm text-muted-foreground">Référence: {prod.sku}</p>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
                             )}
                             <span>{prod?.name || "-"}</span>
                           </TableCell>
-                          <TableCell>{s.qty}</TableCell>
+                          <TableCell className="font-medium">{s.qty}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                placeholder="+/-"
+                                className="w-20"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    const input = e.target as HTMLInputElement;
+                                    const delta = parseInt(input.value);
+                                    if (delta && delta !== 0) {
+                                      adjustStock(s.depotId, s.productId, delta);
+                                      toast({ 
+                                        title: "Stock ajusté", 
+                                        description: `${delta > 0 ? '+' : ''}${delta} unités pour ${prod?.name}` 
+                                      });
+                                      input.value = '';
+                                      window.location.reload();
+                                    }
+                                  }
+                                }}
+                              />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                  const delta = parseInt(input.value);
+                                  if (delta && delta !== 0) {
+                                    adjustStock(s.depotId, s.productId, delta);
+                                    toast({ 
+                                      title: "Stock ajusté", 
+                                      description: `${delta > 0 ? '+' : ''}${delta} unités pour ${prod?.name}` 
+                                    });
+                                    input.value = '';
+                                    window.location.reload();
+                                  }
+                                }}
+                              >
+                                OK
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
