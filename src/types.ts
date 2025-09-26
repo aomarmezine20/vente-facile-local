@@ -62,6 +62,19 @@ export type DocumentStatus =
   | "facture"
   | "comptabilise";
 
+export type PaymentMethod = "cash" | "check" | "transfer" | "card";
+export type PaymentStatus = "unpaid" | "partial" | "paid";
+
+export interface Payment {
+  id: string;
+  documentId: string;
+  amount: number;
+  method: PaymentMethod;
+  date: string; // ISO
+  checkNumber?: string; // for check payments
+  notes?: string;
+}
+
 export interface DocumentBase {
   id: string;
   code: string; // e.g., V-DV-000001
@@ -74,6 +87,8 @@ export interface DocumentBase {
   vendorName?: string; // for achat simple
   notes?: string;
   refFromId?: string; // source doc id
+  paymentStatus?: PaymentStatus;
+  totalPaid?: number;
 }
 
 export interface Document extends DocumentBase {
@@ -89,6 +104,7 @@ export interface AppDB {
   products: Product[];
   stock: StockItem[];
   documents: Document[];
+  payments: Payment[];
   counters: Record<string, number>; // key: `${mode}-${type}`
   seeded?: boolean;
 }

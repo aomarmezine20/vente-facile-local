@@ -37,6 +37,7 @@ export function runSeed() {
         { productId: "p1", depotId: "d2", qty: 5 },
       ],
       documents: [],
+      payments: [],
       counters: {},
       seeded: true,
     };

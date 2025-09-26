@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { getClients, getDB, getDepots, getDocuments, getProducts, nextCode, upsertDocument, adjustStock, deleteDocument, getCurrentUser } from "@/store/localdb";
@@ -9,7 +10,8 @@ import { Document, DocType, Mode, DocumentStatus } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
 import { toast } from "@/hooks/use-toast";
-import { Trash2 } from "lucide-react";
+import { Trash2, Search } from "lucide-react";
+import { SearchBar } from "@/components/SearchBar";
 
 function computeTotal(doc: Document) {
   return doc.lines.reduce((s, l) => s + (l.unitPrice - l.remiseAmount) * l.qty, 0);
@@ -136,6 +138,15 @@ export default function DocumentsList({ mode, type }: { mode: Mode; type: DocTyp
           </Button>
         )}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recherche</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SearchBar />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

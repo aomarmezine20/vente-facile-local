@@ -14,6 +14,7 @@ import DocumentView from "./pages/vente/DocumentView";
 import AchatDocumentsList from "./pages/achat/DocumentsList";
 import AchatDocumentForm from "./pages/achat/DocumentForm";
 import AdminPage from "./pages/admin/AdminPage";
+import StockManager from "./pages/StockManager";
 import runSeed from "./seed";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,9 @@ const App = () => (
 
                   {/* Document detail (commun) */}
                   <Route path="/document/:id" element={<DocumentView />} />
+
+                  {/* Stock management */}
+                  <Route path="/stock" element={<StockManager />} />
 
                   {/* Admin */}
                   <Route path="/admin" element={<AdminPage />} />

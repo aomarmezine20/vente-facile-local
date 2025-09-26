@@ -39,12 +39,18 @@ const sections = [
     ],
   },
   {
+    label: "Stocks",
+    items: [
+      { title: "Gestion des stocks", url: "/stock", icon: Warehouse },
+    ],
+  },
+  {
     label: "Administration",
     items: [
       { title: "Produits & Dépôts", url: "/admin", icon: Boxes },
       { title: "Clients", url: "/admin#clients", icon: Users },
       { title: "Paramètres", url: "/admin#societe", icon: SettingsIcon },
-      { title: "Stocks", url: "/admin#depots", icon: Warehouse },
+      { title: "Utilisateurs", url: "/admin#utilisateurs", icon: Users },
     ],
   },
 ];
@@ -60,6 +66,7 @@ export function AppSidebar() {
         {sections
           .filter(
             (section) =>
+              // Only admin can see Dashboard and Administration
               !(
                 (section.label === "Tableau de bord" || section.label === "Administration") &&
                 user?.role !== "admin"
