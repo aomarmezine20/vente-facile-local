@@ -10,6 +10,7 @@ import { Document, DocType, DocumentStatus } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
 import { toast } from "@/hooks/use-toast";
+import { PaymentManager } from "@/components/PaymentManager";
 
 function nextType(t: DocType): DocType | null {
   if (t === "DV") return "BC";
@@ -113,7 +114,7 @@ export default function DocumentView() {
             <Badge variant="outline">Déjà transformé</Badge>
           )}
           
-          {doc.type === "BL" && doc.mode === "vente" && (
+          {(doc.type === "BL" || doc.type === "FA") && doc.mode === "vente" && (
             <Button variant="secondary" onClick={() => createBR(doc)}>
               Créer BR
             </Button>
@@ -148,6 +149,10 @@ export default function DocumentView() {
           </div>
         </CardContent>
       </Card>
+
+      {doc.type === "FA" && doc.mode === "vente" && (
+        <PaymentManager document={doc} />
+      )}
 
       <Card>
         <CardHeader>

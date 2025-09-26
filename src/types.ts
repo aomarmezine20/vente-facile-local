@@ -37,6 +37,7 @@ export interface Product {
   unit: string; // e.g., "u"
   price: number; // base price for vente (MAD)
   imageDataUrl?: string;
+  category?: string;
 }
 
 export interface StockItem {

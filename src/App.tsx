@@ -15,6 +15,7 @@ import AchatDocumentsList from "./pages/achat/DocumentsList";
 import AchatDocumentForm from "./pages/achat/DocumentForm";
 import AdminPage from "./pages/admin/AdminPage";
 import StockManager from "./pages/StockManager";
+import ProductsCatalog from "./pages/ProductsCatalog";
 import runSeed from "./seed";
 
 const queryClient = new QueryClient();
@@ -52,11 +53,12 @@ const App = () => (
                   <Route path="/achats/bl" element={<AchatDocumentsList type="BL" />} />
                   <Route path="/achats/factures" element={<AchatDocumentsList type="FA" />} />
 
+                  {/* Stock management & Products */}
+                  <Route path="/stock" element={<StockManager />} />
+                  <Route path="/products" element={<ProductsCatalog />} />
+
                   {/* Document detail (commun) */}
                   <Route path="/document/:id" element={<DocumentView />} />
-
-                  {/* Stock management */}
-                  <Route path="/stock" element={<StockManager />} />
 
                   {/* Admin */}
                   <Route path="/admin" element={<AdminPage />} />

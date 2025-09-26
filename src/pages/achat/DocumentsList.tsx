@@ -10,6 +10,7 @@ import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
 import { toast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
+import { SearchBar } from "@/components/SearchBar";
 
 const typeLabels: Record<DocType, string> = {
   DV: "Devis",
@@ -127,6 +128,8 @@ export default function AchatDocumentsList({ type: propType }: { type?: DocType 
           </Button>
         )}
       </div>
+
+      <SearchBar />
 
       <Card>
         <CardHeader>

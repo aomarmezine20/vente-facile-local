@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { FileText, ShoppingCart, Truck, RotateCcw, Receipt, Boxes, Warehouse, Users, Gauge, Settings as SettingsIcon, PackagePlus } from "lucide-react";
+import { FileText, ShoppingCart, Truck, RotateCcw, Receipt, Boxes, Warehouse, Users, Gauge, Settings as SettingsIcon, PackagePlus, Grid3X3 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -41,6 +41,7 @@ const sections = [
   {
     label: "Stocks",
     items: [
+      { title: "Catalogue", url: "/products", icon: Grid3X3 },
       { title: "Gestion des stocks", url: "/stock", icon: Warehouse },
     ],
   },
