@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogHeader } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getProducts, getDepots, getStock, adjustStock, getCurrentUser } from "@/store/localdb";
 import { toast } from "@/hooks/use-toast";
@@ -254,7 +254,9 @@ function StockAdjustmentDialog({ productName, currentStock, onAdjust }: StockAdj
         <Button variant="outline" size="sm">Ajuster</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle>Ajustement de stock</DialogTitle>
+        <DialogHeader>
+          <DialogTitle>Ajustement de stock</DialogTitle>
+        </DialogHeader>
         <div className="space-y-4">
           <div>
             <div className="text-sm font-medium mb-1">Produit</div>
