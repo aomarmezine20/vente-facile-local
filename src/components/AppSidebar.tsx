@@ -49,7 +49,7 @@ const sections = [
     label: "Administration",
     items: [
       { title: "Produits & Dépôts", url: "/admin", icon: Boxes },
-      { title: "Clients", url: "/admin#clients", icon: Users },
+      { title: "Clients", url: "/clients", icon: Users },
       { title: "Paramètres", url: "/admin#societe", icon: SettingsIcon },
       { title: "Utilisateurs", url: "/admin#utilisateurs", icon: Users },
     ],

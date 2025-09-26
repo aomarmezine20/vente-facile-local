@@ -16,6 +16,11 @@ export interface Client {
   id: string;
   name: string;
   type: ClientType;
+  email?: string;
+  phone?: string;
+  address?: string;
+  taxId?: string;
+  notes?: string;
 }
 
 export interface User {

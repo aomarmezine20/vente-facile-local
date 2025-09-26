@@ -11,7 +11,7 @@ import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
 import { toast } from "@/hooks/use-toast";
 import { Trash2, Search } from "lucide-react";
-import { SearchBar } from "@/components/SearchBar";
+import { SearchInput } from "@/components/SearchInput";
 
 function computeTotal(doc: Document) {
   return doc.lines.reduce((s, l) => s + (l.unitPrice - l.remiseAmount) * l.qty, 0);
@@ -144,7 +144,11 @@ export default function DocumentsList({ mode, type }: { mode: Mode; type: DocTyp
           <CardTitle>Recherche</CardTitle>
         </CardHeader>
         <CardContent>
-          <SearchBar />
+          <SearchInput 
+            value=""
+            onChange={() => {}}
+            placeholder="Rechercher par code ou client..."
+          />
         </CardContent>
       </Card>
 

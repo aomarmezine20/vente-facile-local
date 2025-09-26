@@ -57,8 +57,19 @@ export function generateDocumentPdf(doc: Document) {
     head: [["#", "Réf.", "Désignation", "Unité", "Qté", "PU", "Remise", "Total"]],
     body,
     startY: 60,
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [30, 41, 59] },
+    styles: { 
+      fontSize: 10,
+      halign: 'center',
+      cellPadding: 3
+    },
+    headStyles: { 
+      fillColor: [30, 41, 59],
+      halign: 'center',
+      fontStyle: 'bold'
+    },
+    margin: { left: 20, right: 20 },
+    tableWidth: 'auto',
+    theme: 'grid'
   });
 
   const subtotal = doc.lines.reduce((s, l) => s + l.unitPrice * l.qty, 0);

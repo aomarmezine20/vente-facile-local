@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
 import { toast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
-import { SearchBar } from "@/components/SearchBar";
+import { SearchInput } from "@/components/SearchInput";
 
 const typeLabels: Record<DocType, string> = {
   DV: "Devis",
@@ -31,7 +31,14 @@ export default function AchatDocumentsList({ type: propType }: { type?: DocType 
   const navigate = useNavigate();
   const { type } = useParams<{ type: DocType }>();
   const actualType = (propType as DocType) || (type as DocType) || "DV";
-  const documents = useMemo(() => getDocuments({ mode: "achat", type: actualType }), [actualType, getDB().documents.length]);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  const allDocuments = useMemo(() => getDocuments({ mode: "achat", type: actualType }), [actualType, getDB().documents.length]);
+  const documents = allDocuments.filter(doc => 
+    doc.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doc.vendorName?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
   const clients = getClients();
   const depots = getDepots();
   const currentUser = getCurrentUser();
@@ -129,25 +136,30 @@ export default function AchatDocumentsList({ type: propType }: { type?: DocType 
         )}
       </div>
 
-      <SearchBar />
+      <SearchInput 
+        value={searchTerm}
+        onChange={setSearchTerm}
+        placeholder="Rechercher par code ou fournisseur..."
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>Liste des documents</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Fournisseur</TableHead>
-                <TableHead>Dépôt</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
+          <div className="flex justify-center">
+            <Table className="max-w-6xl">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-center">Code</TableHead>
+                  <TableHead className="text-center">Date</TableHead>
+                  <TableHead className="text-center">Fournisseur</TableHead>
+                  <TableHead className="text-center">Dépôt</TableHead>
+                  <TableHead className="text-center">Statut</TableHead>
+                  <TableHead className="text-center">Total</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {documents.map((doc) => {
                 const total = doc.lines.reduce((s, l) => s + (l.unitPrice - l.remiseAmount) * l.qty, 0);
@@ -156,17 +168,17 @@ export default function AchatDocumentsList({ type: propType }: { type?: DocType 
                 
                 return (
                   <TableRow key={doc.id}>
-                    <TableCell className="font-medium">{doc.code}</TableCell>
-                    <TableCell>{new Date(doc.date).toLocaleDateString()}</TableCell>
-                    <TableCell>{doc.vendorName || "-"}</TableCell>
-                    <TableCell>{depot}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium text-center">{doc.code}</TableCell>
+                    <TableCell className="text-center">{new Date(doc.date).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-center">{doc.vendorName || "-"}</TableCell>
+                    <TableCell className="text-center">{depot}</TableCell>
+                    <TableCell className="text-center">
                       <Badge variant={statusVariant(doc.status)}>
                         {statusLabel(doc.status)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{fmtMAD(total)}</TableCell>
-                    <TableCell className="space-x-2">
+                    <TableCell className="text-center">{fmtMAD(total)}</TableCell>
+                    <TableCell className="text-center space-x-2">
                       <Button variant="secondary" size="sm" asChild>
                         <Link to={`/document/${doc.id}`}>Voir</Link>
                       </Button>
@@ -188,7 +200,8 @@ export default function AchatDocumentsList({ type: propType }: { type?: DocType 
                 );
               })}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
           {documents.length === 0 && (
             <div className="py-8 text-center text-muted-foreground">
               Aucun document trouvé.

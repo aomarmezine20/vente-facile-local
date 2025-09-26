@@ -117,12 +117,19 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
               <label className="mb-1 block text-sm">Client</label>
               <Select value={clientId} onValueChange={setClientId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choisir" />
+                  <SelectValue placeholder="Choisir un client" />
                 </SelectTrigger>
                 <SelectContent>
                   {getClients().map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.name} ({c.type})
+                      <div className="flex flex-col">
+                        <span className="font-medium">{c.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {c.type === "web" ? "Web" : "Comptoir"} 
+                          {c.email && ` • ${c.email}`}
+                          {c.phone && ` • ${c.phone}`}
+                        </span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -190,25 +197,26 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
             <Button onClick={addLine}>Ajouter</Button>
           </div>
 
-          <Table className="mt-4">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Réf.</TableHead>
-                <TableHead>Désignation</TableHead>
-                <TableHead>Qté</TableHead>
-                <TableHead>PU</TableHead>
-                <TableHead>Remise</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
+          <div className="flex justify-center mt-4">
+            <Table className="max-w-6xl">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-center">Réf.</TableHead>
+                  <TableHead className="text-center">Désignation</TableHead>
+                  <TableHead className="text-center">Qté</TableHead>
+                  <TableHead className="text-center">PU</TableHead>
+                  <TableHead className="text-center">Remise</TableHead>
+                  <TableHead className="text-center">Total</TableHead>
+                  <TableHead className="text-center"></TableHead>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {lines.map((l) => {
                 const p = products.find((x) => x.id === l.productId)!;
                 const total = (l.unitPrice - l.remiseAmount) * l.qty;
                 return (
                   <TableRow key={l.id}>
-                    <TableCell>{p.sku}</TableCell>
+                    <TableCell className="text-center">{p.sku}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         {p.imageDataUrl && (
@@ -231,10 +239,10 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{l.qty}</TableCell>
-                    <TableCell>{fmtMAD(l.unitPrice)}</TableCell>
-                    <TableCell>{fmtMAD(l.remiseAmount)}</TableCell>
-                    <TableCell>{fmtMAD(total)}</TableCell>
+                    <TableCell className="text-center">{l.qty}</TableCell>
+                    <TableCell className="text-center">{fmtMAD(l.unitPrice)}</TableCell>
+                    <TableCell className="text-center">{fmtMAD(l.remiseAmount)}</TableCell>
+                    <TableCell className="text-center">{fmtMAD(total)}</TableCell>
                     <TableCell>
                       <Button variant="ghost" size="sm" onClick={() => removeLine(l.id)}>
                         Supprimer
@@ -264,7 +272,8 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
                 <TableCell></TableCell>
               </TableRow>
             </TableFooter>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
