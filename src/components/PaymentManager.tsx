@@ -18,7 +18,7 @@ interface PaymentManagerProps {
 
 export function PaymentManager({ document }: PaymentManagerProps) {
   const db = getDB();
-  const documentPayments = db.payments.filter(p => p.documentId === document.id);
+  const documentPayments = (db.payments || []).filter(p => p.documentId === document.id);
   const totalPaid = documentPayments.reduce((sum, p) => sum + p.amount, 0);
   const documentTotal = document.lines.reduce((s, l) => s + (l.unitPrice - l.remiseAmount) * l.qty, 0);
   const remainingAmount = documentTotal - totalPaid;
