@@ -57,6 +57,9 @@ export function PaymentManager({ document }: PaymentManagerProps) {
     };
 
     setDB(db => {
+      if (!db.payments) {
+        db.payments = [];
+      }
       db.payments.push(payment);
       
       // Update document payment status

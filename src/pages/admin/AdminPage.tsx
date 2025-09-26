@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct, getStock, adjustStock, resetDB } from "@/store/localdb";
-import { Product, Depot, Client, Company } from "@/types";
+import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct, getStock, adjustStock, resetDB, setDB } from "@/store/localdb";
+import { Product, Depot, Client, Company, User } from "@/types";
 import { fmtMAD } from "@/utils/format";
 import { toast } from "@/hooks/use-toast";
 import { useLocation } from "react-router-dom";
@@ -16,7 +16,9 @@ export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>(getProducts());
   const [depots, setDepots] = useState<Depot[]>(getDepots());
   const [clients, setClients] = useState<Client[]>(getClients());
-  const users = getUsers();
+  const [users, setUsers] = useState<User[]>(getUsers());
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [newUser, setNewUser] = useState({ username: "", password: "", role: "sales" as "admin" | "sales" });
 
   const location = useLocation();
   const [tab, setTab] = useState<string>(() => (window.location.hash?.slice(1) || "societe"));
@@ -67,6 +69,47 @@ export default function AdminPage() {
     const c: Client = { id: `c_${Date.now()}`, name: "Nouveau client", type: "comptoir" };
     upsertClient(c);
     setClients(getClients());
+  };
+
+  const addUser = () => {
+    if (!newUser.username || !newUser.password) {
+      toast({ title: "Erreur", description: "Nom d'utilisateur et mot de passe requis", variant: "destructive" });
+      return;
+    }
+    const u: User = { 
+      id: `u_${Date.now()}`, 
+      username: newUser.username, 
+      password: newUser.password, 
+      role: newUser.role 
+    };
+    setDB(db => {
+      db.users.push(u);
+    });
+    setUsers(getUsers());
+    setNewUser({ username: "", password: "", role: "sales" });
+    toast({ title: "Utilisateur ajouté", description: `${newUser.username} créé avec succès` });
+  };
+
+  const updateUser = (user: User) => {
+    setDB(db => {
+      const idx = db.users.findIndex(u => u.id === user.id);
+      if (idx >= 0) db.users[idx] = user;
+    });
+    setUsers(getUsers());
+    setEditingUser(null);
+    toast({ title: "Utilisateur modifié", description: "Informations mises à jour" });
+  };
+
+  const deleteUser = (userId: string) => {
+    if (users.length <= 1) {
+      toast({ title: "Erreur", description: "Au moins un utilisateur doit rester", variant: "destructive" });
+      return;
+    }
+    setDB(db => {
+      db.users = db.users.filter(u => u.id !== userId);
+    });
+    setUsers(getUsers());
+    toast({ title: "Utilisateur supprimé" });
   };
 
   return (
@@ -357,29 +400,117 @@ export default function AdminPage() {
 
         <TabsContent value="utilisateurs">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex items-center justify-between">
               <CardTitle>Utilisateurs</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg">
+                <Input
+                  placeholder="Nom d'utilisateur"
+                  value={newUser.username}
+                  onChange={(e) => setNewUser(s => ({ ...s, username: e.target.value }))}
+                />
+                <Input
+                  placeholder="Mot de passe"
+                  type="password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser(s => ({ ...s, password: e.target.value }))}
+                />
+                <select
+                  className="h-9 rounded-md border bg-background px-3"
+                  value={newUser.role}
+                  onChange={(e) => setNewUser(s => ({ ...s, role: e.target.value as "admin" | "sales" }))}
+                >
+                  <option value="sales">Vendeur</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <Button onClick={addUser}>Ajouter</Button>
+              </div>
+
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Utilisateur</TableHead>
+                    <TableHead>Mot de passe</TableHead>
                     <TableHead>Rôle</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.map((u) => (
                     <TableRow key={u.id}>
-                      <TableCell>{u.username}</TableCell>
-                      <TableCell>{u.role}</TableCell>
+                      <TableCell>
+                        {editingUser?.id === u.id ? (
+                          <Input
+                            value={editingUser.username}
+                            onChange={(e) => setEditingUser(s => s ? { ...s, username: e.target.value } : null)}
+                          />
+                        ) : (
+                          u.username
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingUser?.id === u.id ? (
+                          <Input
+                            type="password"
+                            value={editingUser.password}
+                            onChange={(e) => setEditingUser(s => s ? { ...s, password: e.target.value } : null)}
+                          />
+                        ) : (
+                          "••••••••"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingUser?.id === u.id ? (
+                          <select
+                            className="h-9 rounded-md border bg-background px-3"
+                            value={editingUser.role}
+                            onChange={(e) => setEditingUser(s => s ? { ...s, role: e.target.value as "admin" | "sales" } : null)}
+                          >
+                            <option value="sales">Vendeur</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        ) : (
+                          u.role === "admin" ? "Admin" : "Vendeur"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {editingUser?.id === u.id ? (
+                            <>
+                              <Button size="sm" onClick={() => updateUser(editingUser)}>
+                                Sauver
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setEditingUser(null)}>
+                                Annuler
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button size="sm" variant="outline" onClick={() => setEditingUser(u)}>
+                                Modifier
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  if (window.confirm(`Supprimer l'utilisateur ${u.username} ?`)) {
+                                    deleteUser(u.id);
+                                  }
+                                }}
+                              >
+                                Supprimer
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
-          <div className="mt-2 text-sm text-muted-foreground">Comptes par défaut: admin/admin, vente/vente</div>
         </TabsContent>
       </Tabs>
     </div>
