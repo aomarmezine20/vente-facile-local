@@ -17,6 +17,7 @@ interface PaymentManagerProps {
 }
 
 export function PaymentManager({ document }: PaymentManagerProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const db = getDB();
   const documentPayments = (db.payments || []).filter(p => p.documentId === document.id);
   const totalPaid = documentPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -80,11 +81,13 @@ export function PaymentManager({ document }: PaymentManagerProps) {
 
     toast({ title: "Règlement ajouté", description: `${fmtMAD(newPayment.amount)} enregistré` });
     setNewPayment({
-      amount: remainingAmount - newPayment.amount,
+      amount: 0,
       method: "cash",
       checkNumber: "",
       notes: ""
     });
+    setIsOpen(false);
+    window.location.reload();
   };
 
   const getPaymentIcon = (method: PaymentMethod) => {
@@ -143,7 +146,7 @@ export function PaymentManager({ document }: PaymentManagerProps) {
         </div>
 
         {remainingAmount > 0 && (
-          <Dialog>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button className="w-full">Ajouter un règlement</Button>
             </DialogTrigger>

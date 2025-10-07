@@ -14,8 +14,11 @@ export function generateDocumentPdf(doc: Document) {
 
   const pdf = new jsPDF();
 
-  // Start from a more centered vertical position
-  const startY = 50;
+  // Calculate content height and center vertically
+  const lineCount = doc.lines.length;
+  const estimatedContentHeight = 80 + (lineCount * 10) + 50;
+  const pageHeight = 297; // A4 height in mm
+  const startY = Math.max(30, (pageHeight - estimatedContentHeight) / 2);
 
   // Header
   if (company.logoDataUrl) {
