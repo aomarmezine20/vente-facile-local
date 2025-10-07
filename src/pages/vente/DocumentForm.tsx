@@ -125,7 +125,7 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
                       <div className="flex flex-col">
                         <span className="font-medium">{c.name}</span>
                         <span className="text-xs text-muted-foreground">
-                          {c.type === "web" ? "Web" : "Comptoir"} 
+                          {c.type === "entreprise" ? "Entreprise" : "Particulier"} 
                           {c.email && ` • ${c.email}`}
                           {c.phone && ` • ${c.phone}`}
                         </span>

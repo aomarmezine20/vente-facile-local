@@ -18,8 +18,8 @@ export function runSeed() {
       ],
       currentUserId: "u1",
       clients: [
-        { id: "c1", name: "Client Comptoir", type: "comptoir" },
-        { id: "c2", name: "Client Web", type: "web" },
+        { id: "c1", name: "Client Particulier", type: "particulier" },
+        { id: "c2", name: "Client Entreprise", type: "entreprise" },
       ],
       depots: [
         { id: "d1", name: "Dépôt Central" },

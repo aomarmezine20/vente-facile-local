@@ -10,7 +10,7 @@ export interface Company {
   currency: "MAD";
 }
 
-export type ClientType = "comptoir" | "web";
+export type ClientType = "particulier" | "entreprise";
 
 export interface Client {
   id: string;

@@ -71,8 +71,8 @@ export default function Dashboard() {
   const commandesEnCours = ventes.filter((d) => d.type === "BC").length;
   
   // Client analytics
-  const clientsComptoir = db.clients.filter(c => c.type === "comptoir").length;
-  const clientsWeb = db.clients.filter(c => c.type === "web").length;
+  const clientsComptoir = db.clients.filter(c => c.type === "particulier").length;
+  const clientsWeb = db.clients.filter(c => c.type === "entreprise").length;
   
   // Performance metrics
   const tauxTransformation = devisEnCours > 0 ? ((commandesEnCours / devisEnCours) * 100).toFixed(1) : "0";
@@ -323,23 +323,23 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clients comptoir</CardTitle>
+            <CardTitle className="text-sm font-medium">Clients particuliers</CardTitle>
             <Users className="h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{clientsComptoir}</div>
-            <p className="text-xs text-muted-foreground">Vente directe</p>
+            <p className="text-xs text-muted-foreground">Personnes physiques</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clients web</CardTitle>
+            <CardTitle className="text-sm font-medium">Clients entreprises</CardTitle>
             <Users className="h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{clientsWeb}</div>
-            <p className="text-xs text-muted-foreground">Vente en ligne</p>
+            <p className="text-xs text-muted-foreground">Personnes morales</p>
           </CardContent>
         </Card>
       </div>

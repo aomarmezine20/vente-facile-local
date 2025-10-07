@@ -18,7 +18,7 @@ export default function ClientManager() {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    type: "comptoir" as ClientType,
+    type: "particulier" as ClientType,
     email: "",
     phone: "",
     address: "",
@@ -29,7 +29,7 @@ export default function ClientManager() {
   const resetForm = () => {
     setFormData({
       name: "",
-      type: "comptoir",
+      type: "particulier",
       email: "",
       phone: "",
       address: "",
@@ -120,8 +120,8 @@ export default function ClientManager() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="comptoir">Comptoir</SelectItem>
-                      <SelectItem value="web">Web</SelectItem>
+                      <SelectItem value="particulier">Particulier</SelectItem>
+                      <SelectItem value="entreprise">Entreprise</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -214,8 +214,8 @@ export default function ClientManager() {
                   <TableRow key={client.id}>
                     <TableCell className="font-medium">{client.name}</TableCell>
                     <TableCell>
-                      <Badge variant={client.type === "web" ? "default" : "secondary"}>
-                        {client.type === "web" ? "Web" : "Comptoir"}
+                      <Badge variant={client.type === "entreprise" ? "default" : "secondary"}>
+                        {client.type === "entreprise" ? "Entreprise" : "Particulier"}
                       </Badge>
                     </TableCell>
                     <TableCell>{client.email || "-"}</TableCell>

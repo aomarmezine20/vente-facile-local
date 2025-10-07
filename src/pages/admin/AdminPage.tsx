@@ -66,7 +66,7 @@ export default function AdminPage() {
   };
 
   const addClient = () => {
-    const c: Client = { id: `c_${Date.now()}`, name: "Nouveau client", type: "comptoir" };
+    const c: Client = { id: `c_${Date.now()}`, name: "Nouveau client", type: "particulier" };
     upsertClient(c);
     setClients(getClients());
   };

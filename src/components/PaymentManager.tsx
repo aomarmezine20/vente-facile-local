@@ -87,7 +87,6 @@ export function PaymentManager({ document }: PaymentManagerProps) {
       notes: ""
     });
     setIsOpen(false);
-    window.location.reload();
   };
 
   const getPaymentIcon = (method: PaymentMethod) => {
