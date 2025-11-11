@@ -3,13 +3,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct, getStock, adjustStock, resetDB, setDB } from "@/store/localdb";
-import { Product, Depot, Client, Company, User } from "@/types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct, getStock, adjustStock, resetDB, setDB, upsertUser, deleteUser, getCounters, setCounter } from "@/store/localdb";
+import { Product, Depot, Client, Company, User, Mode, DocType } from "@/types";
 import { fmtMAD } from "@/utils/format";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useLocation } from "react-router-dom";
+import { Plus, Pencil, Trash2, User as UserIcon, Hash } from "lucide-react";
 
 export default function AdminPage() {
   const [company, setCompanyState] = useState<Company>(getCompany());
@@ -36,7 +40,7 @@ export default function AdminPage() {
   const saveCompany = () => {
     setCompany(company);
     setCompanyState(getCompany());
-    toast({ title: "Paramètres sauvegardés" });
+    toast.success("Paramètres sauvegardés");
   };
 
   const onLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,7 +52,7 @@ export default function AdminPage() {
       const updated = { ...company, logoDataUrl };
       setCompany(updated);
       setCompanyState(updated);
-      toast({ title: "Logo mis à jour" });
+      toast.success("Logo mis à jour");
     };
     reader.readAsDataURL(file);
   };
@@ -73,7 +77,7 @@ export default function AdminPage() {
 
   const addUser = () => {
     if (!newUser.username || !newUser.password) {
-      toast({ title: "Erreur", description: "Nom d'utilisateur et mot de passe requis", variant: "destructive" });
+      toast.error("Nom d'utilisateur et mot de passe requis");
       return;
     }
     const u: User = { 
@@ -87,7 +91,7 @@ export default function AdminPage() {
     });
     setUsers(getUsers());
     setNewUser({ username: "", password: "", role: "sales" });
-    toast({ title: "Utilisateur ajouté", description: `${newUser.username} créé avec succès` });
+    toast.success(`Utilisateur ${newUser.username} créé avec succès`);
   };
 
   const updateUser = (user: User) => {
@@ -97,19 +101,19 @@ export default function AdminPage() {
     });
     setUsers(getUsers());
     setEditingUser(null);
-    toast({ title: "Utilisateur modifié", description: "Informations mises à jour" });
+    toast.success("Informations utilisateur mises à jour");
   };
 
   const deleteUser = (userId: string) => {
     if (users.length <= 1) {
-      toast({ title: "Erreur", description: "Au moins un utilisateur doit rester", variant: "destructive" });
+      toast.error("Au moins un utilisateur doit rester");
       return;
     }
     setDB(db => {
       db.users = db.users.filter(u => u.id !== userId);
     });
     setUsers(getUsers());
-    toast({ title: "Utilisateur supprimé" });
+    toast.success("Utilisateur supprimé");
   };
 
   return (
@@ -218,7 +222,7 @@ export default function AdminPage() {
                                 p.imageDataUrl = reader.result as string;
                                 upsertProduct(p);
                                 setProducts(getProducts());
-                                toast({ title: "Image article mise à jour" });
+                                toast.success("Image article mise à jour");
                               };
                               reader.readAsDataURL(file);
                             }}
@@ -319,10 +323,7 @@ export default function AdminPage() {
                                     const delta = parseInt(input.value);
                                     if (delta && delta !== 0) {
                                       adjustStock(s.depotId, s.productId, delta);
-                                      toast({ 
-                                        title: "Stock ajusté", 
-                                        description: `${delta > 0 ? '+' : ''}${delta} unités pour ${prod?.name}` 
-                                      });
+                                      toast.success(`Stock ajusté: ${delta > 0 ? '+' : ''}${delta} unités pour ${prod?.name}`);
                                       input.value = '';
                                       window.location.reload();
                                     }
@@ -337,10 +338,7 @@ export default function AdminPage() {
                                   const delta = parseInt(input.value);
                                   if (delta && delta !== 0) {
                                     adjustStock(s.depotId, s.productId, delta);
-                                    toast({ 
-                                      title: "Stock ajusté", 
-                                      description: `${delta > 0 ? '+' : ''}${delta} unités pour ${prod?.name}` 
-                                    });
+                                    toast.success(`Stock ajusté: ${delta > 0 ? '+' : ''}${delta} unités pour ${prod?.name}`);
                                     input.value = '';
                                     window.location.reload();
                                   }
@@ -512,7 +510,119 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="counters">
+          <CountersManager />
+        </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function CountersManager() {
+  const counters = getCounters();
+  const [editMode, setEditMode] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>("");
+
+  const docTypes: Array<{ mode: Mode; type: DocType; label: string }> = [
+    { mode: "vente", type: "DV", label: "Vente - Devis" },
+    { mode: "vente", type: "BC", label: "Vente - Bon de Commande" },
+    { mode: "vente", type: "BL", label: "Vente - Bon de Livraison" },
+    { mode: "vente", type: "BR", label: "Vente - Bon de Retour" },
+    { mode: "vente", type: "FA", label: "Vente - Facture" },
+    { mode: "achat", type: "DV", label: "Achat - Devis" },
+    { mode: "achat", type: "BC", label: "Achat - Bon de Commande" },
+    { mode: "achat", type: "BL", label: "Achat - Bon de Livraison" },
+    { mode: "achat", type: "FA", label: "Achat - Facture" },
+  ];
+
+  const handleSave = (mode: Mode, type: DocType) => {
+    const value = parseInt(editValue);
+    if (isNaN(value) || value < 0) {
+      toast.error("Valeur invalide");
+      return;
+    }
+    setCounter(mode, type, value);
+    toast.success("Compteur mis à jour");
+    setEditMode(null);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Hash className="h-5 w-5" />
+          Gestion des compteurs
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-4">
+          Définissez le numéro de départ pour chaque type de document. Le prochain document créé utilisera ce numéro + 1.
+        </p>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Type de document</TableHead>
+              <TableHead>Compteur actuel</TableHead>
+              <TableHead>Prochain numéro</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {docTypes.map(({ mode, type, label }) => {
+              const key = `${mode}-${type}`;
+              const current = counters[key] || 0;
+              const prefix = mode === "vente" ? "V" : "A";
+              const nextCode = `${prefix}-${type}-${(current + 1).toString().padStart(6, "0")}`;
+              const isEditing = editMode === key;
+
+              return (
+                <TableRow key={key}>
+                  <TableCell>{label}</TableCell>
+                  <TableCell>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        className="w-32"
+                        min="0"
+                      />
+                    ) : (
+                      current
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">{nextCode}</TableCell>
+                  <TableCell className="text-right">
+                    {isEditing ? (
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" onClick={() => handleSave(mode, type)}>
+                          Enregistrer
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditMode(null)}>
+                          Annuler
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditMode(key);
+                          setEditValue(current.toString());
+                        }}
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Modifier
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }

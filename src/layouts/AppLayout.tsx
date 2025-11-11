@@ -17,7 +17,12 @@ export default function AppLayout({ children }: PropsWithChildren) {
         <header className="flex h-14 items-center gap-2 border-b bg-background px-4">
           <SidebarTrigger />
           <div className="flex flex-1 items-center justify-between">
-            <div className="font-semibold">{company.name}</div>
+            <div className="flex items-center gap-3">
+              {company.logoDataUrl && (
+                <img src={company.logoDataUrl} alt="Logo" className="h-8 w-8 object-contain" />
+              )}
+              <div className="font-semibold">{company.name}</div>
+            </div>
             <div className="flex items-center gap-2 text-sm">
               <span>{user ? `${user.username} (${user.role})` : "Non connecté"}</span>
               {user ? (

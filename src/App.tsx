@@ -17,6 +17,7 @@ import AdminPage from "./pages/admin/AdminPage";
 import StockManager from "./pages/StockManager";
 import ProductsCatalog from "./pages/ProductsCatalog";
 import ClientManager from "./pages/ClientManager";
+import Reports from "./pages/Reports";
 import runSeed from "./seed";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Navigate to="/dashboard" />} />
                   <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/reports" element={<Reports />} />
 
                   {/* Ventes */}
                   <Route path="/ventes/devis" element={<DocumentsList mode="vente" type="DV" />} />

@@ -53,6 +53,17 @@ export function nextCode(mode: Mode, type: DocType): string {
   return code;
 }
 
+export function setCounter(mode: Mode, type: DocType, value: number) {
+  const key = `${mode}-${type}`;
+  setDB((db) => {
+    db.counters[key] = value;
+  });
+}
+
+export function getCounters(): Record<string, number> {
+  return getDB().counters;
+}
+
 export function upsertDocument(doc: Document) {
   setDB((db) => {
     const idx = db.documents.findIndex((d) => d.id === doc.id);
@@ -130,7 +141,20 @@ export function adjustStock(depotId: string, productId: string, deltaQty: number
   });
 }
 
+export function upsertUser(user: User) {
+  setDB((db) => {
+    const i = db.users.findIndex((u) => u.id === user.id);
+    if (i >= 0) db.users[i] = user;
+    else db.users.push(user);
+  });
+}
+
+export function deleteUser(userId: string) {
+  setDB((db) => {
+    db.users = db.users.filter((u) => u.id !== userId);
+  });
+}
+
 export function resetDB() {
   localStorage.removeItem(KEY);
 }
-

@@ -1,5 +1,15 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { FileText, ShoppingCart, Truck, RotateCcw, Receipt, Boxes, Warehouse, Users, Gauge, Settings as SettingsIcon, PackagePlus, Grid3X3 } from "lucide-react";
+import {
+  FileText,
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Users,
+  Warehouse,
+  Settings,
+  ShoppingBag,
+  TrendingUp,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,7 +26,8 @@ const sections = [
   {
     label: "Tableau de bord",
     items: [
-      { title: "Dashboard", url: "/dashboard", icon: Gauge },
+      { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
+      { title: "Rapports", url: "/reports", icon: TrendingUp },
     ],
   },
   {
@@ -24,9 +35,9 @@ const sections = [
     items: [
       { title: "Devis (DV)", url: "/ventes/devis", icon: FileText },
       { title: "Bon de commande (BC)", url: "/ventes/bc", icon: ShoppingCart },
-      { title: "Bon de livraison (BL)", url: "/ventes/bl", icon: Truck },
-      { title: "Bon de retour (BR)", url: "/ventes/br", icon: RotateCcw },
-      { title: "Factures (FA)", url: "/ventes/factures", icon: Receipt },
+      { title: "Bon de livraison (BL)", url: "/ventes/bl", icon: Package },
+      { title: "Bon de retour (BR)", url: "/ventes/br", icon: Package },
+      { title: "Factures (FA)", url: "/ventes/factures", icon: FileText },
     ],
   },
   {
@@ -34,31 +45,28 @@ const sections = [
     items: [
       { title: "Devis (DV)", url: "/achats/devis", icon: FileText },
       { title: "Bon de commande (BC)", url: "/achats/bc", icon: ShoppingCart },
-      { title: "Bon de réception (BL)", url: "/achats/bl", icon: PackagePlus },
-      { title: "Factures (FA)", url: "/achats/factures", icon: Receipt },
+      { title: "Bon de réception (BL)", url: "/achats/bl", icon: Package },
+      { title: "Factures (FA)", url: "/achats/factures", icon: FileText },
     ],
   },
   {
     label: "Stocks",
     items: [
-      { title: "Catalogue", url: "/products", icon: Grid3X3 },
+      { title: "Catalogue", url: "/products", icon: ShoppingBag },
       { title: "Gestion des stocks", url: "/stock", icon: Warehouse },
     ],
   },
   {
     label: "Administration",
     items: [
-      { title: "Produits & Dépôts", url: "/admin", icon: Boxes },
       { title: "Clients", url: "/clients", icon: Users },
-      { title: "Paramètres", url: "/admin#societe", icon: SettingsIcon },
-      { title: "Utilisateurs", url: "/admin#utilisateurs", icon: Users },
+      { title: "Paramètres", url: "/admin", icon: Settings },
     ],
   },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
-  const currentFull = location.pathname + location.hash;
   const user = getCurrentUser();
 
   return (
@@ -67,7 +75,6 @@ export function AppSidebar() {
         {sections
           .filter(
             (section) =>
-              // Only admin can see Dashboard and Administration
               !(
                 (section.label === "Tableau de bord" || section.label === "Administration") &&
                 user?.role !== "admin"
@@ -79,11 +86,11 @@ export function AppSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {section.items.map((item) => {
-                    const active = currentFull === item.url;
+                    const active = location.pathname === item.url;
                     return (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton asChild isActive={active}>
-                          <NavLink to={item.url} end>
+                          <NavLink to={item.url}>
                             <item.icon className="mr-2 h-4 w-4" />
                             <span>{item.title}</span>
                           </NavLink>
@@ -95,7 +102,6 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
           ))}
-
       </SidebarContent>
     </Sidebar>
   );
