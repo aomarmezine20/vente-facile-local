@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { getDocuments, getProducts, getClients } from "@/store/localdb";
+import { getDocuments, getProducts, getClients, getCompany } from "@/store/localdb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ export default function Reports() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
 
-  const documents = getDocuments({ mode });
+  const documents = getDocuments({ mode, type: "FA" }); // Only show Facture documents
   const products = getProducts();
   const clients = getClients();
 
@@ -61,27 +61,41 @@ export default function Reports() {
   const generatePDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const company = getCompany();
+    
+    // Logo
+    let startY = 20;
+    if (company.logoDataUrl) {
+      try {
+        doc.addImage(company.logoDataUrl, "PNG", 15, 10, 25, 25);
+        startY = 40;
+      } catch {}
+    }
+    
+    // Company info
+    doc.setFontSize(14);
+    doc.text(company.name, 45, startY - 10);
     
     // Title
     doc.setFontSize(18);
-    doc.text(`Rapport ${mode === "vente" ? "Ventes" : "Achats"}`, pageWidth / 2, 20, { align: "center" });
+    doc.text(`Rapport ${mode === "vente" ? "Ventes" : "Achats"} - Factures`, pageWidth / 2, startY + 5, { align: "center" });
     
     // Period
     doc.setFontSize(12);
     const periodText = `Période: ${startDate || "Début"} - ${endDate || "Fin"}`;
-    doc.text(periodText, pageWidth / 2, 30, { align: "center" });
+    doc.text(periodText, pageWidth / 2, startY + 15, { align: "center" });
     
     // Summary
     doc.setFontSize(14);
-    doc.text(`Total documents: ${filteredDocuments.length}`, 20, 45);
-    doc.text(`Revenu total: ${totalRevenue.toFixed(2)} MAD`, 20, 55);
+    doc.text(`Total factures: ${filteredDocuments.length}`, 20, startY + 30);
+    doc.text(`Revenu total: ${totalRevenue.toFixed(2)} MAD`, 20, startY + 40);
     
     // Documents table
     doc.setFontSize(12);
-    doc.text("Liste des documents", 20, 70);
+    doc.text("Liste des factures", 20, startY + 55);
     
     autoTable(doc, {
-      startY: 75,
+      startY: startY + 60,
       head: [["Code", "Type", "Date", "Client", "Total MAD"]],
       body: filteredDocuments.map((d) => {
         const client = clients.find((c) => c.id === d.clientId);
@@ -117,7 +131,7 @@ export default function Reports() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Rapports {mode === "vente" ? "Ventes" : "Achats"}</CardTitle>
+          <CardTitle>Rapports {mode === "vente" ? "Ventes" : "Achats"} - Factures</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -157,7 +171,7 @@ export default function Reports() {
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span>Total documents:</span>
+                    <span>Total factures:</span>
                     <span className="font-bold">{filteredDocuments.length}</span>
                   </div>
                   <div className="flex justify-between">
@@ -192,7 +206,7 @@ export default function Reports() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Documents</CardTitle>
+          <CardTitle>Factures</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>

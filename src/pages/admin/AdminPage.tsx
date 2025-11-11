@@ -126,6 +126,7 @@ export default function AdminPage() {
             <TabsTrigger value="depots">Dépôts</TabsTrigger>
             <TabsTrigger value="clients">Clients</TabsTrigger>
             <TabsTrigger value="utilisateurs">Utilisateurs</TabsTrigger>
+            <TabsTrigger value="counters">Compteurs</TabsTrigger>
           </TabsList>
 
         <TabsContent value="societe">
