@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   TrendingUp,
   Calculator,
+  Database,
 } from "lucide-react";
 import {
   Sidebar,
@@ -62,6 +63,7 @@ const sections = [
     label: "Administration",
     items: [
       { title: "Clients", url: "/clients", icon: Users },
+      { title: "Sauvegarde", url: "/backup", icon: Database },
       { title: "Paramètres", url: "/admin", icon: Settings },
     ],
   },

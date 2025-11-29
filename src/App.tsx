@@ -19,6 +19,7 @@ import ProductsCatalog from "./pages/ProductsCatalog";
 import ClientManager from "./pages/ClientManager";
 import Reports from "./pages/Reports";
 import Comptabilite from "./pages/Comptabilite";
+import Backup from "./pages/Backup";
 import runSeed from "./seed";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,7 @@ const App = () => (
 
                   {/* Admin */}
                   <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/backup" element={<Backup />} />
 
                   <Route path="*" element={<NotFound />} />
                 </Routes>
