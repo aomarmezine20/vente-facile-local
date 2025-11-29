@@ -9,8 +9,11 @@ import { adjustStock, getClients, getDepots, getDocument, getProducts, nextCode,
 import { Document, DocType, DocumentStatus } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
+import { generateWarrantyCertificate } from "@/pdf/warranty";
 import { toast } from "@/hooks/use-toast";
 import { PaymentManager } from "@/components/PaymentManager";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 function nextType(t: DocType): DocType | null {
   if (t === "DV") return "BC";
@@ -50,7 +53,17 @@ export default function DocumentView() {
     if (t === "BL") status = "livre";
     if (t === "FA") status = "facture";
     
-    const newDoc: Document = { ...doc, id, code, type: t, date, status, refFromId: doc.id };
+    const newDoc: Document = { 
+      ...doc, 
+      id, 
+      code, 
+      type: t, 
+      date, 
+      status, 
+      refFromId: doc.id,
+      // Default to include in accounting for factures
+      includeInAccounting: t === "FA" ? true : undefined
+    };
     upsertDocument(newDoc);
 
     if (t === "BL" && doc.depotId) {
@@ -147,11 +160,49 @@ export default function DocumentView() {
             <div className="text-sm text-muted-foreground">Dépôt</div>
             <div>{depot}</div>
           </div>
+          {doc.type === "FA" && doc.mode === "vente" && doc.clientId && (
+            <div className="md:col-span-3 flex items-center space-x-2">
+              <Checkbox 
+                id="includeInAccounting"
+                checked={doc.includeInAccounting ?? true}
+                onCheckedChange={(checked) => {
+                  upsertDocument({ ...doc, includeInAccounting: checked === true });
+                  toast({ 
+                    title: checked ? "Inclure en comptabilité" : "Exclure de la comptabilité",
+                    description: checked 
+                      ? "Cette facture sera incluse dans les rapports comptables"
+                      : "Cette facture sera exclue des rapports comptables"
+                  });
+                }}
+              />
+              <Label htmlFor="includeInAccounting" className="text-sm cursor-pointer">
+                Inclure cette facture en comptabilité
+                <span className="block text-xs text-muted-foreground">
+                  {clients.find(c => c.id === doc.clientId)?.type === "particulier" 
+                    ? "Pour les particuliers qui demandent une facture officielle"
+                    : "Pour toutes les factures entreprises"}
+                </span>
+              </Label>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {doc.type === "FA" && doc.mode === "vente" && (
         <PaymentManager document={doc} />
+      )}
+
+      {doc.type === "FA" && doc.mode === "vente" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Certificat de garantie</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => generateWarrantyCertificate(doc)} variant="outline">
+              Générer le certificat de garantie
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       <Card>

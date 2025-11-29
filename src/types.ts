@@ -68,7 +68,7 @@ export type DocumentStatus =
   | "facture"
   | "comptabilise";
 
-export type PaymentMethod = "cash" | "check" | "transfer" | "card";
+export type PaymentMethod = "especes" | "cheque" | "virement" | "carte" | "autre";
 export type PaymentStatus = "unpaid" | "partial" | "paid";
 
 export interface Payment {
@@ -95,6 +95,7 @@ export interface DocumentBase {
   refFromId?: string; // source doc id
   paymentStatus?: PaymentStatus;
   totalPaid?: number;
+  includeInAccounting?: boolean; // Track if this should be included in accounting reports
 }
 
 export interface Document extends DocumentBase {

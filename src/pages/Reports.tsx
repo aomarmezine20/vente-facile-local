@@ -16,6 +16,7 @@ export default function Reports() {
   const [mode, setMode] = useState<Mode>("vente");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [accountingFilter, setAccountingFilter] = useState<"all" | "included" | "excluded">("all");
 
   const documents = getDocuments({ mode, type: "FA" }); // Only show Facture documents
   const products = getProducts();
@@ -25,9 +26,14 @@ export default function Reports() {
     return documents.filter((doc) => {
       if (startDate && doc.date < startDate) return false;
       if (endDate && doc.date > endDate) return false;
+      
+      // Filter by accounting status
+      if (accountingFilter === "included" && doc.includeInAccounting === false) return false;
+      if (accountingFilter === "excluded" && doc.includeInAccounting !== false) return false;
+      
       return true;
     });
-  }, [documents, startDate, endDate]);
+  }, [documents, startDate, endDate, accountingFilter]);
 
   const productStats = useMemo(() => {
     const stats = new Map<string, { name: string; qty: number; revenue: number }>();
@@ -134,7 +140,7 @@ export default function Reports() {
           <CardTitle>Rapports {mode === "vente" ? "Ventes" : "Achats"} - Factures</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <Label>Type</Label>
               <Select value={mode} onValueChange={(v) => setMode(v as Mode)}>
@@ -154,6 +160,19 @@ export default function Reports() {
             <div>
               <Label>Date fin</Label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>Comptabilité</Label>
+              <Select value={accountingFilter} onValueChange={(v) => setAccountingFilter(v as "all" | "included" | "excluded")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes</SelectItem>
+                  <SelectItem value="included">Incluses</SelectItem>
+                  <SelectItem value="excluded">Exclues</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-end">
               <Button onClick={generatePDF} className="w-full">

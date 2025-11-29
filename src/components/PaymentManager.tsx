@@ -26,7 +26,7 @@ export function PaymentManager({ document }: PaymentManagerProps) {
 
   const [newPayment, setNewPayment] = useState({
     amount: remainingAmount,
-    method: "cash" as PaymentMethod,
+    method: "especes" as PaymentMethod,
     checkNumber: "",
     notes: ""
   });
@@ -42,7 +42,7 @@ export function PaymentManager({ document }: PaymentManagerProps) {
       return;
     }
 
-    if (newPayment.method === "check" && !newPayment.checkNumber.trim()) {
+    if (newPayment.method === "cheque" && !newPayment.checkNumber.trim()) {
       toast({ title: "Erreur", description: "Numéro de chèque requis", variant: "destructive" });
       return;
     }
@@ -53,7 +53,7 @@ export function PaymentManager({ document }: PaymentManagerProps) {
       amount: newPayment.amount,
       method: newPayment.method,
       date: todayISO(),
-      checkNumber: newPayment.method === "check" ? newPayment.checkNumber : undefined,
+      checkNumber: newPayment.method === "cheque" ? newPayment.checkNumber : undefined,
       notes: newPayment.notes || undefined
     };
 
@@ -82,7 +82,7 @@ export function PaymentManager({ document }: PaymentManagerProps) {
     toast({ title: "Règlement ajouté", description: `${fmtMAD(newPayment.amount)} enregistré` });
     setNewPayment({
       amount: 0,
-      method: "cash",
+      method: "especes",
       checkNumber: "",
       notes: ""
     });
@@ -91,19 +91,21 @@ export function PaymentManager({ document }: PaymentManagerProps) {
 
   const getPaymentIcon = (method: PaymentMethod) => {
     switch (method) {
-      case "cash": return <Banknote className="h-4 w-4" />;
-      case "check": return <Receipt className="h-4 w-4" />;
-      case "card": 
-      case "transfer": return <CreditCard className="h-4 w-4" />;
+      case "especes": return <Banknote className="h-4 w-4" />;
+      case "cheque": return <Receipt className="h-4 w-4" />;
+      case "carte": 
+      case "virement": return <CreditCard className="h-4 w-4" />;
+      case "autre": return <Receipt className="h-4 w-4" />;
     }
   };
 
   const getPaymentMethodLabel = (method: PaymentMethod) => {
     switch (method) {
-      case "cash": return "Espèces";
-      case "check": return "Chèque";
-      case "card": return "Carte";
-      case "transfer": return "Virement";
+      case "especes": return "Espèces";
+      case "cheque": return "Chèque";
+      case "carte": return "Carte";
+      case "virement": return "Virement";
+      case "autre": return "Autre";
     }
   };
 
@@ -171,14 +173,15 @@ export function PaymentManager({ document }: PaymentManagerProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cash">Espèces</SelectItem>
-                      <SelectItem value="check">Chèque</SelectItem>
-                      <SelectItem value="card">Carte</SelectItem>
-                      <SelectItem value="transfer">Virement</SelectItem>
+                      <SelectItem value="especes">Espèces</SelectItem>
+                      <SelectItem value="cheque">Chèque</SelectItem>
+                      <SelectItem value="carte">Carte</SelectItem>
+                      <SelectItem value="virement">Virement</SelectItem>
+                      <SelectItem value="autre">Autre</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                {newPayment.method === "check" && (
+                {newPayment.method === "cheque" && (
                   <div>
                     <label className="text-sm font-medium">Numéro de chèque</label>
                     <Input
