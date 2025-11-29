@@ -9,6 +9,7 @@ import {
   Settings,
   ShoppingBag,
   TrendingUp,
+  Calculator,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,6 +29,7 @@ const sections = [
     items: [
       { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
       { title: "Rapports", url: "/reports", icon: TrendingUp },
+      { title: "Comptabilité", url: "/comptabilite", icon: Calculator },
     ],
   },
   {
