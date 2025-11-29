@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Document } from "@/types";
-import { getCompany, getClients, getDepots, getProducts } from "@/store/localdb";
+import { getCompany, getClients, getDepots, getProducts, getDB } from "@/store/localdb";
 import { fmtMAD } from "@/utils/format";
 
 export function generateDocumentPdf(doc: Document) {
@@ -88,6 +88,53 @@ export function generateDocumentPdf(doc: Document) {
   pdf.text(`Remises: ${fmtMAD(remiseTotal)}`, 195, endY + 16, { align: "right" });
   pdf.setFontSize(14);
   pdf.text(`Total: ${fmtMAD(total)}`, 195, endY + 24, { align: "right" });
+
+  // Show payments if this is a facture with payments
+  if (doc.type === "FA") {
+    const db = getDB();
+    const payments = db.payments.filter(p => p.documentId === doc.id);
+    
+    if (payments.length > 0) {
+      const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+      const remaining = total - totalPaid;
+      
+      let currentY = endY + 35;
+      pdf.setFontSize(12);
+      pdf.text("Paiements:", 15, currentY);
+      currentY += 6;
+      
+      pdf.setFontSize(10);
+      payments.forEach(payment => {
+        const methodLabels: Record<string, string> = {
+          especes: "Espèces",
+          cheque: "Chèque",
+          virement: "Virement",
+          carte: "Carte",
+          autre: "Autre"
+        };
+        const method = methodLabels[payment.method] || payment.method;
+        const date = new Date(payment.date).toLocaleDateString();
+        pdf.text(`${date} - ${method}: ${fmtMAD(payment.amount)}`, 20, currentY);
+        currentY += 5;
+      });
+      
+      currentY += 3;
+      pdf.setFontSize(12);
+      pdf.text(`Total payé: ${fmtMAD(totalPaid)}`, 195, currentY, { align: "right" });
+      currentY += 6;
+      if (remaining > 0) {
+        pdf.setFontSize(11);
+        pdf.setTextColor(220, 38, 38);
+        pdf.text(`Reste à payer: ${fmtMAD(remaining)}`, 195, currentY, { align: "right" });
+        pdf.setTextColor(0, 0, 0);
+      } else {
+        pdf.setFontSize(11);
+        pdf.setTextColor(22, 163, 74);
+        pdf.text("Payé intégralement", 195, currentY, { align: "right" });
+        pdf.setTextColor(0, 0, 0);
+      }
+    }
+  }
 
   pdf.save(`${doc.code}.pdf`);
 }

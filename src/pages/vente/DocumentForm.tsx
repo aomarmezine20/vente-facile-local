@@ -11,19 +11,25 @@ import { Document, DocumentLine, Mode } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function DocumentForm({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
   const products = getProducts();
   const depots = getDepots();
   const stock = getStock();
-  const [clientId, setClientId] = useState<string | undefined>(getClients()[0]?.id);
+  const clients = getClients();
+  const [clientId, setClientId] = useState<string | undefined>(clients[0]?.id);
   const [vendorName, setVendorName] = useState("");
   const [depotId, setDepotId] = useState<string | undefined>(depots[0]?.id);
   const [lines, setLines] = useState<DocumentLine[]>([]);
   const [newLine, setNewLine] = useState<{ productId?: string; qty: number; unitPrice?: number; remise: number }>(
     { qty: 1, remise: 0 },
   );
+  const [openClientSelect, setOpenClientSelect] = useState(false);
 
   const totals = useMemo(() => {
     const subtotal = lines.reduce((s, l) => s + l.unitPrice * l.qty, 0);
@@ -115,25 +121,54 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
           {mode === "vente" ? (
             <div>
               <label className="mb-1 block text-sm">Client</label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir un client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getClients().map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{c.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {c.type === "entreprise" ? "Entreprise" : "Particulier"} 
-                          {c.email && ` • ${c.email}`}
-                          {c.phone && ` • ${c.phone}`}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={openClientSelect} onOpenChange={setOpenClientSelect}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openClientSelect}
+                    className="w-full justify-between"
+                  >
+                    {clientId
+                      ? clients.find((c) => c.id === clientId)?.name
+                      : "Rechercher un client..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Rechercher un client..." />
+                    <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                    <CommandGroup className="max-h-64 overflow-auto">
+                      {clients.map((c) => (
+                        <CommandItem
+                          key={c.id}
+                          value={`${c.name} ${c.email || ""} ${c.phone || ""}`}
+                          onSelect={() => {
+                            setClientId(c.id);
+                            setOpenClientSelect(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              clientId === c.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{c.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {c.type === "entreprise" ? "Entreprise" : "Particulier"}
+                              {c.email && ` • ${c.email}`}
+                              {c.phone && ` • ${c.phone}`}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           ) : (
             <div className="md:col-span-2">
