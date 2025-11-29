@@ -10,20 +10,32 @@ export function generateWarrantyCertificate(doc: Document) {
 
   const pdf = new jsPDF();
   const pageWidth = 210; // A4 width in mm
-  let currentY = 20;
+  let currentY = 25;
 
-  // Header with logo
+  // Header with company name and logo
+  pdf.setFontSize(16);
+  pdf.setFont("helvetica", "bold");
+  pdf.text(company.name.toUpperCase(), 15, currentY);
+  
   if (company.logoDataUrl) {
     try {
-      pdf.addImage(company.logoDataUrl, "PNG", 15, currentY, 25, 25);
+      pdf.addImage(company.logoDataUrl, "PNG", pageWidth - 40, 15, 25, 25);
     } catch {}
   }
   
+  currentY += 8;
+  pdf.setFontSize(10);
+  pdf.setFont("helvetica", "italic");
+  pdf.text("Be open be smart", 15, currentY);
+  
+  currentY += 15;
+  
+  // Main title
   pdf.setFontSize(20);
   pdf.setFont("helvetica", "bold");
-  pdf.text("CERTIFICAT DE GARANTIE", pageWidth / 2, currentY + 10, { align: "center" });
+  pdf.text("CERTIFICAT DE GARANTIE", pageWidth / 2, currentY, { align: "center" });
   
-  currentY += 35;
+  currentY += 15;
 
   // Company Information
   pdf.setFontSize(12);
@@ -106,10 +118,10 @@ export function generateWarrantyCertificate(doc: Document) {
     }
   });
 
-  currentY += 8;
+  currentY += 12;
 
   // Warranty Terms
-  pdf.setFontSize(12);
+  pdf.setFontSize(11);
   pdf.setFont("helvetica", "bold");
   pdf.text("Conditions de garantie:", 15, currentY);
   pdf.setFont("helvetica", "normal");
@@ -117,21 +129,82 @@ export function generateWarrantyCertificate(doc: Document) {
   currentY += 7;
 
   const warrantyTerms = [
-    "1. La garantie couvre les défauts de fabrication et les vices cachés.",
-    "2. La durée de garantie est de 12 mois à compter de la date d'achat.",
-    "3. La garantie ne couvre pas les dommages causés par une mauvaise utilisation.",
-    "4. Pour bénéficier de la garantie, le client doit présenter ce certificat.",
-    "5. Les réparations sous garantie sont effectuées dans un délai raisonnable.",
-    "6. Les frais de transport aller-retour sont à la charge du client.",
+    "• Les frais de transport du revendeur et d'installation sont à la charge de l'acheteur.",
+    "",
+    "• Garantie à vie sur les composants pour intérieurs.",
+    `  ${company.name} garantit que les produits ne sont pas sujets à la corrosion traversante,`,
+    "  et ce, pour toute la durée de vie du produit.",
+    "",
+    "• Garantie de 20 ans contre les ruptures du système.",
+    "",
+    "• Garantie de 20 ans relative à l'intégrité des composants en aluminium anodisé.",
   ];
 
   warrantyTerms.forEach((term) => {
+    if (term === "") {
+      currentY += 3;
+      return;
+    }
     const lines = pdf.splitTextToSize(term, pageWidth - 30);
     pdf.text(lines, 15, currentY);
     currentY += 5 * lines.length;
   });
+  
+  currentY += 5;
 
+  // Warranty integrity section
+  pdf.setFontSize(11);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Garantie d'intégrité", 15, currentY);
+  currentY += 6;
+  
+  pdf.setFontSize(9);
+  pdf.setFont("helvetica", "normal");
+  const integrityText = [
+    `${company.name} garantit que les produits sont réalisés conformément aux standards`,
+    "qualitatifs imposés. En cas de vice constaté lors de l'ouverture de l'emballage,",
+    "l'acheteur dispose de 20 jours pour le signaler au revendeur autorisé.",
+  ];
+  
+  integrityText.forEach(line => {
+    pdf.text(line, 15, currentY);
+    currentY += 5;
+  });
+  
+  currentY += 10;
+  
+  // Certificate section
+  pdf.setFontSize(12);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Certificat d'authenticité", 15, currentY);
+  currentY += 8;
+  
+  pdf.setFontSize(10);
+  pdf.setFont("helvetica", "normal");
+  const certText = `${company.name} vous garantit personnellement l'originalité des produits que vous avez achetés,`;
+  pdf.text(certText, 15, currentY);
+  currentY += 5;
+  pdf.text("vous remerciant pour avoir choisi nos produits et vous souhaitant d'en obtenir entière satisfaction.", 15, currentY);
+  
+  currentY += 12;
+  
+  pdf.setFontSize(10);
+  const customerLine = `Ce certificat est destiné à Mr/Mme ${client?.name || "................................"}`;
+  pdf.text(customerLine, 15, currentY);
+  currentY += 6;
+  
+  const productCount = doc.lines.reduce((sum, line) => sum + line.qty, 0);
+  const productLine = `pour l'achat de produits de marque ${company.name.toUpperCase()}, d'une quantité de ${productCount} unité(s).`;
+  pdf.text(productLine, 15, currentY);
+  
   currentY += 15;
+  
+  // Date and location
+  pdf.setFontSize(10);
+  const dateText = `Fait à: ${company.address || ".................."}    Le ${new Date(doc.date).toLocaleDateString()}`;
+  pdf.text(dateText, 15, currentY);
+  
+  currentY += 20;
 
   // Signatures
   pdf.setFontSize(10);
