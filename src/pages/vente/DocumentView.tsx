@@ -198,9 +198,9 @@ export default function DocumentView() {
             <CardTitle>Certificat de garantie</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => generateWarrantyCertificate(doc)} variant="outline">
-              Générer le certificat de garantie
-            </Button>
+              <Button variant="outline" onClick={async () => await generateWarrantyCertificate(doc)}>
+                Générer le certificat de garantie
+              </Button>
           </CardContent>
         </Card>
       )}
