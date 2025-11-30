@@ -30,6 +30,7 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
     { qty: 1, remise: 0 },
   );
   const [openClientSelect, setOpenClientSelect] = useState(false);
+  const [openProductSelect, setOpenProductSelect] = useState(false);
 
   const totals = useMemo(() => {
     const subtotal = lines.reduce((s, l) => s + l.unitPrice * l.qty, 0);
@@ -185,29 +186,74 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
-            <Select value={newLine.productId} onValueChange={(v) => setNewLine((s) => ({ ...s, productId: v }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Article" />
-              </SelectTrigger>
-              <SelectContent>
-                {products.map((p) => {
-                  const availableStock = depotId ? stock.find(s => s.productId === p.id && s.depotId === depotId)?.qty || 0 : 0;
-                  const showStock = mode === "vente" && depotId;
-                  return (
-                    <SelectItem key={p.id} value={p.id}>
-                      <div className="flex items-center justify-between w-full">
-                        <span>{p.sku} — {p.name}</span>
-                        {showStock && (
-                          <Badge variant={availableStock > 0 ? "default" : "destructive"}>
-                            Stock: {availableStock}
-                          </Badge>
-                        )}
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+            <Popover open={openProductSelect} onOpenChange={setOpenProductSelect}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between"
+                >
+                  {newLine.productId
+                    ? (() => {
+                        const p = products.find((x) => x.id === newLine.productId);
+                        const availableStock = depotId ? stock.find(s => s.productId === newLine.productId && s.depotId === depotId)?.qty || 0 : 0;
+                        const showStock = mode === "vente" && depotId;
+                        return (
+                          <span className="flex items-center justify-between w-full">
+                            <span className="truncate">{p?.sku} — {p?.name}</span>
+                            {showStock && (
+                              <Badge variant={availableStock > 0 ? "default" : "destructive"} className="ml-2">
+                                {availableStock}
+                              </Badge>
+                            )}
+                          </span>
+                        );
+                      })()
+                    : "Rechercher un article..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0">
+                <Command>
+                  <CommandInput placeholder="Rechercher par réf. ou nom..." />
+                  <CommandEmpty>Aucun article trouvé.</CommandEmpty>
+                  <CommandGroup className="max-h-64 overflow-auto">
+                    {products.map((p) => {
+                      const availableStock = depotId ? stock.find(s => s.productId === p.id && s.depotId === depotId)?.qty || 0 : 0;
+                      const showStock = mode === "vente" && depotId;
+                      return (
+                        <CommandItem
+                          key={p.id}
+                          value={`${p.sku} ${p.name}`}
+                          onSelect={() => {
+                            setNewLine((s) => ({ ...s, productId: p.id }));
+                            setOpenProductSelect(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              newLine.productId === p.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex flex-col">
+                              <span className="font-medium">{p.name}</span>
+                              <span className="text-xs text-muted-foreground">Réf: {p.sku} • Prix: {p.price} MAD</span>
+                            </div>
+                            {showStock && (
+                              <Badge variant={availableStock > 0 ? "default" : "destructive"} className="ml-2">
+                                Stock: {availableStock}
+                              </Badge>
+                            )}
+                          </div>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <Input
               type="number"
               min={1}
