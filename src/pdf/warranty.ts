@@ -42,23 +42,43 @@ export async function generateWarrantyCertificate(doc: Document) {
   const location = company.address || "";
   const date = new Date(doc.date).toLocaleDateString('fr-FR');
 
-  // Draw text on second page matching first page design
+  // Draw text on second page matching the new design
   const textSize = 11;
   const lineHeight = 20;
-  let yPosition = height - 150;
+  let yPosition = height - 120;
 
   // Title
-  secondPage.drawText("Certificat de Garantie SCRIGNO", {
-    x: width / 2 - 120,
+  secondPage.drawText("Certificat d'authenticité Scrigno", {
+    x: width / 2 - 110,
     y: yPosition,
     size: 16,
     font: boldFont,
     color: rgb(0, 0, 0),
   });
 
-  yPosition -= 60;
+  yPosition -= 50;
 
-  // Client info line
+  // Introduction paragraph
+  const introLines = [
+    "Cher acheteur, Smart Exit vous garantis personnellement l'originalité du contre-châssis",
+    "Scrigno que vous avez acheté, vous remerciant pour avoir choisi nos produits et vous",
+    "souhaitant d'en obtenir entière satisfaction."
+  ];
+  
+  introLines.forEach(line => {
+    secondPage.drawText(line, {
+      x: 50,
+      y: yPosition,
+      size: textSize,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= lineHeight;
+  });
+
+  yPosition -= 20;
+
+  // Client certificate section with filled data
   secondPage.drawText("Ce certificat est destiné à Mr/Mme ", {
     x: 50,
     y: yPosition,
@@ -67,8 +87,8 @@ export async function generateWarrantyCertificate(doc: Document) {
     color: rgb(0, 0, 0),
   });
 
-  secondPage.drawText(clientName.substring(0, 35), {
-    x: 250,
+  secondPage.drawText(clientName || ".................................", {
+    x: 260,
     y: yPosition,
     size: textSize,
     font: boldFont,
@@ -76,7 +96,7 @@ export async function generateWarrantyCertificate(doc: Document) {
   });
 
   secondPage.drawText(" pour", {
-    x: 250 + clientName.substring(0, 35).length * 6,
+    x: 430,
     y: yPosition,
     size: textSize,
     font: font,
@@ -85,7 +105,7 @@ export async function generateWarrantyCertificate(doc: Document) {
 
   yPosition -= lineHeight;
 
-  // Product line
+  // Product type line
   secondPage.drawText("l'achat de contre-châssis de marque SCRIGNO, de type ", {
     x: 50,
     y: yPosition,
@@ -94,7 +114,7 @@ export async function generateWarrantyCertificate(doc: Document) {
     color: rgb(0, 0, 0),
   });
 
-  secondPage.drawText(productTypes.substring(0, 30), {
+  secondPage.drawText(productTypes || "................", {
     x: 350,
     y: yPosition,
     size: textSize,
@@ -102,10 +122,18 @@ export async function generateWarrantyCertificate(doc: Document) {
     color: rgb(0, 0, 0),
   });
 
+  secondPage.drawText(" et", {
+    x: 470,
+    y: yPosition,
+    size: textSize,
+    font: font,
+    color: rgb(0, 0, 0),
+  });
+
   yPosition -= lineHeight;
 
   // Quantity line
-  secondPage.drawText("et d'une quantité de ", {
+  secondPage.drawText("d'une quantité de ", {
     x: 50,
     y: yPosition,
     size: textSize,
@@ -113,8 +141,8 @@ export async function generateWarrantyCertificate(doc: Document) {
     color: rgb(0, 0, 0),
   });
 
-  secondPage.drawText(productCount.toString(), {
-    x: 180,
+  secondPage.drawText(productCount.toString() || "...........", {
+    x: 170,
     y: yPosition,
     size: textSize,
     font: boldFont,
@@ -122,17 +150,17 @@ export async function generateWarrantyCertificate(doc: Document) {
   });
 
   secondPage.drawText(" unité(s).", {
-    x: 200,
+    x: 220,
     y: yPosition,
     size: textSize,
     font: font,
     color: rgb(0, 0, 0),
   });
 
-  yPosition -= 40;
+  yPosition -= 100;
 
-  // Location and date line
-  secondPage.drawText(`Fait à ${location.substring(0, 30)}, le ${date}`, {
+  // Location and date line (simplified format)
+  secondPage.drawText(`Fait à : ${location || "                                    "}`, {
     x: 50,
     y: yPosition,
     size: textSize,
@@ -140,35 +168,13 @@ export async function generateWarrantyCertificate(doc: Document) {
     color: rgb(0, 0, 0),
   });
 
-  yPosition -= 60;
-
-  // Warranty terms
-  const warrantyText = [
-    "CONDITIONS DE GARANTIE :",
-    "",
-    "Ce produit est garanti contre tout défaut de fabrication pour une durée de 10 ans",
-    "à compter de la date d'achat mentionnée ci-dessus.",
-    "",
-    "La garantie couvre les vices cachés et les défauts de matériaux ou de fabrication",
-    "dans des conditions normales d'utilisation et d'installation conforme.",
-    "",
-    "La garantie ne couvre pas l'usure normale, les dommages causés par une mauvaise",
-    "installation, un usage inapproprié, un entretien inadéquat ou des modifications",
-    "non autorisées du produit.",
-  ];
-
-  warrantyText.forEach(line => {
-    const fontSize = line.startsWith("CONDITIONS") ? 12 : 10;
-    const textFont = line.startsWith("CONDITIONS") ? boldFont : font;
-    
-    secondPage.drawText(line, {
-      x: 50,
-      y: yPosition,
-      size: fontSize,
-      font: textFont,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= 18;
+  const [day, month, year] = date.split('/');
+  secondPage.drawText(`Le    ${day}  /  ${month}  /  ${year}  .`, {
+    x: 350,
+    y: yPosition,
+    size: textSize,
+    font: font,
+    color: rgb(0, 0, 0),
   });
 
   // Save and download the PDF
