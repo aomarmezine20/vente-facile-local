@@ -9,22 +9,20 @@ export async function generateWarrantyCertificate(doc: Document) {
   const products = getProducts();
   const client = doc.clientId ? clients.find((c) => c.id === doc.clientId) : null;
 
-  // Load the template PDF (we'll only use page 1)
+  // Load the template PDF (both pages)
   const templateBytes = await fetch(warrantyTemplate).then(res => res.arrayBuffer());
   const templateDoc = await PDFDocument.load(templateBytes);
   
   // Create a new PDF document
   const pdfDoc = await PDFDocument.create();
   
-  // Copy the first page from template
-  const [firstPage] = await pdfDoc.copyPages(templateDoc, [0]);
+  // Copy both pages from template
+  const [firstPage, secondPage] = await pdfDoc.copyPages(templateDoc, [0, 1]);
   pdfDoc.addPage(firstPage);
+  pdfDoc.addPage(secondPage);
   
-  // Get page dimensions from the first page
-  const { width, height } = firstPage.getSize();
-  
-  // Create second page with same dimensions
-  const secondPage = pdfDoc.addPage([width, height]);
+  // Get page dimensions from the second page
+  const { width, height } = secondPage.getSize();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   
@@ -39,82 +37,30 @@ export async function generateWarrantyCertificate(doc: Document) {
   
   const productCount = doc.lines.reduce((sum, line) => sum + line.qty, 0);
   
-  const location = company.address || "";
+  const location = "Casablanca";
   const date = new Date(doc.date).toLocaleDateString('fr-FR');
 
-  // Draw text on second page matching the new design
+  // Draw text on the template's second page
   const textSize = 11;
   const lineHeight = 20;
-  let yPosition = height - 120;
+  let yPosition = height - 240;
 
-  // Title
-  secondPage.drawText("Certificat d'authenticité Scrigno", {
-    x: width / 2 - 110,
-    y: yPosition,
-    size: 16,
-    font: boldFont,
-    color: rgb(0, 0, 0),
-  });
+  // Skip title and intro - already on template
+  // Position for the client name field
 
-  yPosition -= 50;
-
-  // Introduction paragraph
-  const introLines = [
-    "Cher acheteur, Smart Exit vous garantis personnellement l'originalité du contre-châssis",
-    "Scrigno que vous avez acheté, vous remerciant pour avoir choisi nos produits et vous",
-    "souhaitant d'en obtenir entière satisfaction."
-  ];
-  
-  introLines.forEach(line => {
-    secondPage.drawText(line, {
-      x: 50,
-      y: yPosition,
-      size: textSize,
-      font: font,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= lineHeight;
-  });
-
-  yPosition -= 20;
-
-  // Client certificate section with filled data
-  secondPage.drawText("Ce certificat est destiné à Mr/Mme ", {
-    x: 50,
-    y: yPosition,
-    size: textSize,
-    font: font,
-    color: rgb(0, 0, 0),
-  });
-
-  secondPage.drawText(clientName || ".................................", {
-    x: 260,
+  // Fill in client name on the dotted line
+  secondPage.drawText(clientName || "", {
+    x: 265,
     y: yPosition,
     size: textSize,
     font: boldFont,
-    color: rgb(0, 0, 0),
-  });
-
-  secondPage.drawText(" pour", {
-    x: 430,
-    y: yPosition,
-    size: textSize,
-    font: font,
     color: rgb(0, 0, 0),
   });
 
   yPosition -= lineHeight;
 
-  // Product type line
-  secondPage.drawText("l'achat de contre-châssis de marque SCRIGNO, de type ", {
-    x: 50,
-    y: yPosition,
-    size: textSize,
-    font: font,
-    color: rgb(0, 0, 0),
-  });
-
-  secondPage.drawText(productTypes || "................", {
+  // Fill in product type
+  secondPage.drawText(productTypes || "", {
     x: 350,
     y: yPosition,
     size: textSize,
@@ -122,46 +68,22 @@ export async function generateWarrantyCertificate(doc: Document) {
     color: rgb(0, 0, 0),
   });
 
-  secondPage.drawText(" et", {
-    x: 470,
-    y: yPosition,
-    size: textSize,
-    font: font,
-    color: rgb(0, 0, 0),
-  });
-
   yPosition -= lineHeight;
 
-  // Quantity line
-  secondPage.drawText("d'une quantité de ", {
-    x: 50,
-    y: yPosition,
-    size: textSize,
-    font: font,
-    color: rgb(0, 0, 0),
-  });
-
-  secondPage.drawText(productCount.toString() || "...........", {
-    x: 170,
+  // Fill in quantity
+  secondPage.drawText(productCount.toString(), {
+    x: 165,
     y: yPosition,
     size: textSize,
     font: boldFont,
     color: rgb(0, 0, 0),
   });
 
-  secondPage.drawText(" unité(s).", {
-    x: 220,
-    y: yPosition,
-    size: textSize,
-    font: font,
-    color: rgb(0, 0, 0),
-  });
-
   yPosition -= 100;
 
-  // Location and date line (simplified format)
-  secondPage.drawText(`Fait à : ${location || "                                    "}`, {
-    x: 50,
+  // Fill in location and date
+  secondPage.drawText(location, {
+    x: 105,
     y: yPosition,
     size: textSize,
     font: font,
@@ -169,8 +91,24 @@ export async function generateWarrantyCertificate(doc: Document) {
   });
 
   const [day, month, year] = date.split('/');
-  secondPage.drawText(`Le    ${day}  /  ${month}  /  ${year}  .`, {
-    x: 350,
+  secondPage.drawText(day, {
+    x: 365,
+    y: yPosition,
+    size: textSize,
+    font: font,
+    color: rgb(0, 0, 0),
+  });
+
+  secondPage.drawText(month, {
+    x: 395,
+    y: yPosition,
+    size: textSize,
+    font: font,
+    color: rgb(0, 0, 0),
+  });
+
+  secondPage.drawText(year, {
+    x: 425,
     y: yPosition,
     size: textSize,
     font: font,
