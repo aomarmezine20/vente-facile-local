@@ -88,10 +88,9 @@ export default function AdminPage() {
     };
     upsertProduct(p);
     
-    // Initialize stock for the selected depot
-    if (newProduct.initialStock > 0) {
-      adjustStock(newProduct.depotId, p.id, newProduct.initialStock);
-    }
+    // Always initialize stock for the selected depot (even if 0)
+    // This ensures the product appears in the stock manager
+    adjustStock(newProduct.depotId, p.id, newProduct.initialStock);
     
     setProducts(getProducts());
     setNewProduct({ 
@@ -104,7 +103,7 @@ export default function AdminPage() {
       initialStock: 0 
     });
     setShowAddProductDialog(false);
-    toast.success(`Produit ${p.name} ajouté avec succès`);
+    toast.success(`Produit ${p.name} ajouté avec succès dans ${depots.find(d => d.id === newProduct.depotId)?.name}`);
   };
 
   const addDepot = () => {
@@ -241,6 +240,7 @@ export default function AdminPage() {
                         value={newProduct.sku} 
                         onChange={(e) => setNewProduct({...newProduct, sku: e.target.value})}
                         placeholder="Ex: SCR-001"
+                        required
                       />
                     </div>
                     <div>
@@ -249,6 +249,7 @@ export default function AdminPage() {
                         value={newProduct.name} 
                         onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
                         placeholder="Ex: Contre-châssis SCRIGNO"
+                        required
                       />
                     </div>
                     <div>
@@ -256,24 +257,37 @@ export default function AdminPage() {
                       <Input 
                         value={newProduct.category} 
                         onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
-                        placeholder="Ex: Châssis"
+                        placeholder="Ex: Châssis, Porte coulissante"
                       />
                     </div>
                     <div>
                       <Label>Unité</Label>
-                      <Input 
+                      <Select 
                         value={newProduct.unit} 
-                        onChange={(e) => setNewProduct({...newProduct, unit: e.target.value})}
-                        placeholder="Ex: u, pcs, kg"
-                      />
+                        onValueChange={(v) => setNewProduct({...newProduct, unit: v})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="u">Unité (u)</SelectItem>
+                          <SelectItem value="pcs">Pièces (pcs)</SelectItem>
+                          <SelectItem value="kg">Kilogrammes (kg)</SelectItem>
+                          <SelectItem value="m">Mètres (m)</SelectItem>
+                          <SelectItem value="m²">Mètres carrés (m²)</SelectItem>
+                          <SelectItem value="l">Litres (l)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
-                      <Label>Prix (MAD)</Label>
+                      <Label>Prix unitaire (MAD) *</Label>
                       <Input 
                         type="number"
                         step="0.01"
+                        min="0"
                         value={newProduct.price} 
                         onChange={(e) => setNewProduct({...newProduct, price: Number(e.target.value)})}
+                        required
                       />
                     </div>
                     <div>
@@ -295,13 +309,18 @@ export default function AdminPage() {
                       </Select>
                     </div>
                     <div className="md:col-span-2">
-                      <Label>Stock initial</Label>
+                      <Label>Stock initial dans ce dépôt *</Label>
                       <Input 
                         type="number"
+                        min="0"
                         value={newProduct.initialStock} 
                         onChange={(e) => setNewProduct({...newProduct, initialStock: Number(e.target.value)})}
-                        placeholder="Quantité initiale dans ce dépôt"
+                        placeholder="Quantité initiale (ex: 10)"
+                        required
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Le produit sera ajouté au stock du dépôt sélectionné
+                      </p>
                     </div>
                   </div>
                   <div className="flex justify-end gap-2 mt-4">
