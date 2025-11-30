@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct, getStock, adjustStock, resetDB, setDB, upsertUser, deleteUser, getCounters, setCounter } from "@/store/localdb";
 import { Product, Depot, Client, Company, User, Mode, DocType } from "@/types";
 import { fmtMAD } from "@/utils/format";
@@ -23,6 +24,16 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>(getUsers());
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUser, setNewUser] = useState({ username: "", password: "", role: "sales" as "admin" | "sales" });
+  const [newProduct, setNewProduct] = useState({ 
+    sku: "", 
+    name: "", 
+    category: "", 
+    unit: "u", 
+    price: 0, 
+    depotId: depots[0]?.id || "", 
+    initialStock: 0 
+  });
+  const [showAddProductDialog, setShowAddProductDialog] = useState(false);
 
   const location = useLocation();
   const [tab, setTab] = useState<string>(() => (window.location.hash?.slice(1) || "societe"));
@@ -58,9 +69,42 @@ export default function AdminPage() {
   };
 
   const addProduct = () => {
-    const p: Product = { id: `p_${Date.now()}`, sku: "NEW", name: "Nouvel article", unit: "u", price: 0 };
+    if (!newProduct.sku || !newProduct.name) {
+      toast.error("Référence et nom sont requis");
+      return;
+    }
+    if (!newProduct.depotId) {
+      toast.error("Veuillez sélectionner un dépôt");
+      return;
+    }
+    
+    const p: Product = { 
+      id: `p_${Date.now()}`, 
+      sku: newProduct.sku, 
+      name: newProduct.name, 
+      category: newProduct.category || undefined,
+      unit: newProduct.unit, 
+      price: newProduct.price 
+    };
     upsertProduct(p);
+    
+    // Initialize stock for the selected depot
+    if (newProduct.initialStock > 0) {
+      adjustStock(newProduct.depotId, p.id, newProduct.initialStock);
+    }
+    
     setProducts(getProducts());
+    setNewProduct({ 
+      sku: "", 
+      name: "", 
+      category: "", 
+      unit: "u", 
+      price: 0, 
+      depotId: depots[0]?.id || "", 
+      initialStock: 0 
+    });
+    setShowAddProductDialog(false);
+    toast.success(`Produit ${p.name} ajouté avec succès`);
   };
 
   const addDepot = () => {
@@ -179,7 +223,97 @@ export default function AdminPage() {
           <Card>
             <CardHeader className="flex items-center justify-between">
               <CardTitle>Produits</CardTitle>
-              <Button onClick={addProduct}>Ajouter</Button>
+              <Dialog open={showAddProductDialog} onOpenChange={setShowAddProductDialog}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Ajouter un produit
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Ajouter un nouveau produit</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <Label>Référence (SKU) *</Label>
+                      <Input 
+                        value={newProduct.sku} 
+                        onChange={(e) => setNewProduct({...newProduct, sku: e.target.value})}
+                        placeholder="Ex: SCR-001"
+                      />
+                    </div>
+                    <div>
+                      <Label>Nom du produit *</Label>
+                      <Input 
+                        value={newProduct.name} 
+                        onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                        placeholder="Ex: Contre-châssis SCRIGNO"
+                      />
+                    </div>
+                    <div>
+                      <Label>Catégorie</Label>
+                      <Input 
+                        value={newProduct.category} 
+                        onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
+                        placeholder="Ex: Châssis"
+                      />
+                    </div>
+                    <div>
+                      <Label>Unité</Label>
+                      <Input 
+                        value={newProduct.unit} 
+                        onChange={(e) => setNewProduct({...newProduct, unit: e.target.value})}
+                        placeholder="Ex: u, pcs, kg"
+                      />
+                    </div>
+                    <div>
+                      <Label>Prix (MAD)</Label>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={newProduct.price} 
+                        onChange={(e) => setNewProduct({...newProduct, price: Number(e.target.value)})}
+                      />
+                    </div>
+                    <div>
+                      <Label>Dépôt de stockage *</Label>
+                      <Select 
+                        value={newProduct.depotId} 
+                        onValueChange={(v) => setNewProduct({...newProduct, depotId: v})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un dépôt" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {depots.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Stock initial</Label>
+                      <Input 
+                        type="number"
+                        value={newProduct.initialStock} 
+                        onChange={(e) => setNewProduct({...newProduct, initialStock: Number(e.target.value)})}
+                        placeholder="Quantité initiale dans ce dépôt"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="outline" onClick={() => setShowAddProductDialog(false)}>
+                      Annuler
+                    </Button>
+                    <Button onClick={addProduct}>
+                      Créer le produit
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </CardHeader>
             <CardContent>
               <Table>
@@ -191,63 +325,83 @@ export default function AdminPage() {
                     <TableHead>Catégorie</TableHead>
                     <TableHead>Unité</TableHead>
                     <TableHead>Prix</TableHead>
+                    <TableHead>Dépôts</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          {p.imageDataUrl && (
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <img src={p.imageDataUrl} alt={p.name} className="h-16 w-16 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity" />
-                              </DialogTrigger>
-                              <DialogContent className="max-w-2xl">
-                                <img src={p.imageDataUrl} alt={p.name} className="w-full h-auto rounded-lg" />
-                                <div className="text-center mt-2">
-                                  <h3 className="font-semibold">{p.name}</h3>
-                                  <p className="text-sm text-muted-foreground">Référence: {p.sku}</p>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                          )}
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            className="text-xs"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                p.imageDataUrl = reader.result as string;
-                                upsertProduct(p);
-                                setProducts(getProducts());
-                                toast.success("Image article mise à jour");
-                              };
-                              reader.readAsDataURL(file);
-                            }}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Input value={p.sku} onChange={(e) => { p.sku = e.target.value; upsertProduct(p); setProducts(getProducts()); }} />
-                      </TableCell>
-                      <TableCell>
-                        <Input value={p.name} onChange={(e) => { p.name = e.target.value; upsertProduct(p); setProducts(getProducts()); }} />
-                      </TableCell>
-                      <TableCell>
-                        <Input value={p.category || ""} onChange={(e) => { p.category = e.target.value; upsertProduct(p); setProducts(getProducts()); }} placeholder="Catégorie" />
-                      </TableCell>
-                      <TableCell>
-                        <Input value={p.unit} onChange={(e) => { p.unit = e.target.value; upsertProduct(p); setProducts(getProducts()); }} />
-                      </TableCell>
-                      <TableCell>
-                        <Input type="number" step="0.01" value={p.price} onChange={(e) => { p.price = Number(e.target.value); upsertProduct(p); setProducts(getProducts()); }} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {products.map((p) => {
+                    const productStock = getStock().filter(s => s.productId === p.id);
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            {p.imageDataUrl && (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <img src={p.imageDataUrl} alt={p.name} className="h-16 w-16 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity" />
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl">
+                                  <img src={p.imageDataUrl} alt={p.name} className="w-full h-auto rounded-lg" />
+                                  <div className="text-center mt-2">
+                                    <h3 className="font-semibold">{p.name}</h3>
+                                    <p className="text-sm text-muted-foreground">Référence: {p.sku}</p>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            )}
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              className="text-xs"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  p.imageDataUrl = reader.result as string;
+                                  upsertProduct(p);
+                                  setProducts(getProducts());
+                                  toast.success("Image article mise à jour");
+                                };
+                                reader.readAsDataURL(file);
+                              }}
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Input value={p.sku} onChange={(e) => { p.sku = e.target.value; upsertProduct(p); setProducts(getProducts()); }} />
+                        </TableCell>
+                        <TableCell>
+                          <Input value={p.name} onChange={(e) => { p.name = e.target.value; upsertProduct(p); setProducts(getProducts()); }} />
+                        </TableCell>
+                        <TableCell>
+                          <Input value={p.category || ""} onChange={(e) => { p.category = e.target.value; upsertProduct(p); setProducts(getProducts()); }} placeholder="Catégorie" />
+                        </TableCell>
+                        <TableCell>
+                          <Input value={p.unit} onChange={(e) => { p.unit = e.target.value; upsertProduct(p); setProducts(getProducts()); }} />
+                        </TableCell>
+                        <TableCell>
+                          <Input type="number" step="0.01" value={p.price} onChange={(e) => { p.price = Number(e.target.value); upsertProduct(p); setProducts(getProducts()); }} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {productStock.length > 0 ? (
+                              productStock.map(s => {
+                                const depot = depots.find(d => d.id === s.depotId);
+                                return (
+                                  <Badge key={s.depotId} variant="outline" className="text-xs">
+                                    {depot?.name}: {s.qty}
+                                  </Badge>
+                                );
+                              })
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Aucun stock</span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
