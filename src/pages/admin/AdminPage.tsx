@@ -188,6 +188,7 @@ export default function AdminPage() {
                     <TableHead>Photo</TableHead>
                     <TableHead>Réf.</TableHead>
                     <TableHead>Nom</TableHead>
+                    <TableHead>Catégorie</TableHead>
                     <TableHead>Unité</TableHead>
                     <TableHead>Prix</TableHead>
                   </TableRow>
@@ -235,6 +236,9 @@ export default function AdminPage() {
                       </TableCell>
                       <TableCell>
                         <Input value={p.name} onChange={(e) => { p.name = e.target.value; upsertProduct(p); setProducts(getProducts()); }} />
+                      </TableCell>
+                      <TableCell>
+                        <Input value={p.category || ""} onChange={(e) => { p.category = e.target.value; upsertProduct(p); setProducts(getProducts()); }} placeholder="Catégorie" />
                       </TableCell>
                       <TableCell>
                         <Input value={p.unit} onChange={(e) => { p.unit = e.target.value; upsertProduct(p); setProducts(getProducts()); }} />
