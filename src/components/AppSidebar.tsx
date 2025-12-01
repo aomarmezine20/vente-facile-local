@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Calculator,
   Database,
+  Award,
 } from "lucide-react";
 import {
   Sidebar,
@@ -63,6 +64,7 @@ const sections = [
     label: "Administration",
     items: [
       { title: "Clients", url: "/clients", icon: Users },
+      { title: "Certificats", url: "/certificates", icon: Award },
       { title: "Sauvegarde", url: "/backup", icon: Database },
       { title: "Paramètres", url: "/admin", icon: Settings },
     ],
