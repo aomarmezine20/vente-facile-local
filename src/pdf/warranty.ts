@@ -39,79 +39,66 @@ export async function generateWarrantyCertificate(doc: Document) {
   
   const location = "Casablanca";
   const date = new Date(doc.date).toLocaleDateString('fr-FR');
+  
+  // Generate unique certificate ID
+  const timestamp = Date.now();
+  const certificateId = `SE-${doc.code}-${timestamp.toString().slice(-6)}`;
 
-  // Draw text on the template's second page
+  // Draw text at the bottom of the second page in blue
   const textSize = 11;
-  const lineHeight = 20;
-  let yPosition = height - 240;
+  const blueColor = rgb(0.18, 0.31, 0.62); // Blue color for the text
+  let yPosition = 180; // Position from bottom of page
 
-  // Skip title and intro - already on template
-  // Position for the client name field
-
-  // Fill in client name on the dotted line
-  secondPage.drawText(clientName || "", {
-    x: 265,
-    y: yPosition,
-    size: textSize,
-    font: boldFont,
-    color: rgb(0, 0, 0),
-  });
-
-  yPosition -= lineHeight;
-
-  // Fill in product type
-  secondPage.drawText(productTypes || "", {
-    x: 350,
-    y: yPosition,
-    size: textSize,
-    font: boldFont,
-    color: rgb(0, 0, 0),
-  });
-
-  yPosition -= lineHeight;
-
-  // Fill in quantity
-  secondPage.drawText(productCount.toString(), {
-    x: 165,
-    y: yPosition,
-    size: textSize,
-    font: boldFont,
-    color: rgb(0, 0, 0),
-  });
-
-  yPosition -= 100;
-
-  // Fill in location and date
-  secondPage.drawText(location, {
-    x: 105,
+  // Main certificate text in blue
+  const certificateText = `Ce certificat est destiné à Mr/Mme ${clientName || "................................."} pour l'achat de`;
+  secondPage.drawText(certificateText, {
+    x: 50,
     y: yPosition,
     size: textSize,
     font: font,
-    color: rgb(0, 0, 0),
+    color: blueColor,
   });
 
+  yPosition -= 15;
+  const productLine = `contre-châssis de marque SCRIGNO, de type ${productTypes || "................"} et d'une quantité de`;
+  secondPage.drawText(productLine, {
+    x: 50,
+    y: yPosition,
+    size: textSize,
+    font: font,
+    color: blueColor,
+  });
+
+  yPosition -= 15;
+  const quantityLine = `${productCount || "..............."} unité(s).`;
+  secondPage.drawText(quantityLine, {
+    x: 50,
+    y: yPosition,
+    size: textSize,
+    font: font,
+    color: blueColor,
+  });
+
+  yPosition -= 60; // Add more space before "Fait à"
+
+  // "Fait à" section
   const [day, month, year] = date.split('/');
-  secondPage.drawText(day, {
-    x: 365,
+  const faitLine = `Fait à : Casablanca                                                         Le     ${day}  /  ${month}  /  ${year}  .`;
+  secondPage.drawText(faitLine, {
+    x: 50,
     y: yPosition,
     size: textSize,
     font: font,
-    color: rgb(0, 0, 0),
+    color: blueColor,
   });
 
-  secondPage.drawText(month, {
-    x: 395,
+  // Add unique certificate ID at the bottom
+  yPosition -= 30;
+  secondPage.drawText(`ID Certificat: ${certificateId}`, {
+    x: 50,
     y: yPosition,
-    size: textSize,
-    font: font,
-    color: rgb(0, 0, 0),
-  });
-
-  secondPage.drawText(year, {
-    x: 425,
-    y: yPosition,
-    size: textSize,
-    font: font,
+    size: 9,
+    font: boldFont,
     color: rgb(0, 0, 0),
   });
 
