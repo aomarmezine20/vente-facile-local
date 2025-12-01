@@ -48,10 +48,10 @@ export async function generateWarrantyCertificate(doc: Document): Promise<string
   const textSize = 12;
   const blueColor = rgb(0.18, 0.31, 0.62); // Blue color for the text
   const centerX = width / 2;
-  let yPosition = height / 2 + 50; // Start from center of page, slightly above
+  let yPosition = height / 2 + 70; // Start from center of page, slightly higher
 
   // Main certificate text in blue - centered
-  const line1 = `Ce certificat est destiné à Mr/Mme ${clientName || "................................."} pour l'achat de`;
+  const line1 = `Ce certificat est destiné à Mr/Mme ${clientName} pour l'achat de`;
   const line1Width = font.widthOfTextAtSize(line1, textSize);
   secondPage.drawText(line1, {
     x: centerX - line1Width / 2,
@@ -62,7 +62,7 @@ export async function generateWarrantyCertificate(doc: Document): Promise<string
   });
 
   yPosition -= 20;
-  const line2 = `contre-châssis de marque SCRIGNO, de type ${productTypes || "................"} et d'une quantité de`;
+  const line2 = `${productTypes} marque SCRIGNO, de type ${productTypes} et d'une quantité de`;
   const line2Width = font.widthOfTextAtSize(line2, textSize);
   secondPage.drawText(line2, {
     x: centerX - line2Width / 2,
@@ -73,7 +73,7 @@ export async function generateWarrantyCertificate(doc: Document): Promise<string
   });
 
   yPosition -= 20;
-  const line3 = `${productCount || "..............."} unité(s).`;
+  const line3 = `${productCount} unité(s).`;
   const line3Width = font.widthOfTextAtSize(line3, textSize);
   secondPage.drawText(line3, {
     x: centerX - line3Width / 2,
