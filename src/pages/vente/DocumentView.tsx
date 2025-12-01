@@ -198,7 +198,14 @@ export default function DocumentView() {
             <CardTitle>Certificat de garantie</CardTitle>
           </CardHeader>
           <CardContent>
-              <Button variant="outline" onClick={async () => await generateWarrantyCertificate(doc)}>
+              <Button variant="outline" onClick={async () => {
+                const certId = await generateWarrantyCertificate(doc);
+                toast({ 
+                  title: "Certificat généré avec succès", 
+                  description: `ID unique: ${certId}`,
+                  duration: 5000
+                });
+              }}>
                 Générer le certificat de garantie
               </Button>
           </CardContent>

@@ -3,7 +3,7 @@ import { Document } from "@/types";
 import { getCompany, getClients, getProducts } from "@/store/localdb";
 import warrantyTemplate from "@/assets/warranty-template.pdf";
 
-export async function generateWarrantyCertificate(doc: Document) {
+export async function generateWarrantyCertificate(doc: Document): Promise<string> {
   const company = getCompany();
   const clients = getClients();
   const products = getProducts();
@@ -44,63 +44,84 @@ export async function generateWarrantyCertificate(doc: Document) {
   const timestamp = Date.now();
   const certificateId = `SE-${doc.code}-${timestamp.toString().slice(-6)}`;
 
-  // Draw text at the bottom of the second page in blue
-  const textSize = 11;
+  // Calculate center position for text on second page
+  const textSize = 12;
   const blueColor = rgb(0.18, 0.31, 0.62); // Blue color for the text
-  let yPosition = 180; // Position from bottom of page
+  const centerX = width / 2;
+  let yPosition = height / 2 + 50; // Start from center of page, slightly above
 
-  // Main certificate text in blue
-  const certificateText = `Ce certificat est destiné à Mr/Mme ${clientName || "................................."} pour l'achat de`;
-  secondPage.drawText(certificateText, {
-    x: 50,
+  // Main certificate text in blue - centered
+  const line1 = `Ce certificat est destiné à Mr/Mme ${clientName || "................................."} pour l'achat de`;
+  const line1Width = font.widthOfTextAtSize(line1, textSize);
+  secondPage.drawText(line1, {
+    x: centerX - line1Width / 2,
     y: yPosition,
     size: textSize,
     font: font,
     color: blueColor,
   });
 
-  yPosition -= 15;
-  const productLine = `contre-châssis de marque SCRIGNO, de type ${productTypes || "................"} et d'une quantité de`;
-  secondPage.drawText(productLine, {
-    x: 50,
+  yPosition -= 20;
+  const line2 = `contre-châssis de marque SCRIGNO, de type ${productTypes || "................"} et d'une quantité de`;
+  const line2Width = font.widthOfTextAtSize(line2, textSize);
+  secondPage.drawText(line2, {
+    x: centerX - line2Width / 2,
     y: yPosition,
     size: textSize,
     font: font,
     color: blueColor,
   });
 
-  yPosition -= 15;
-  const quantityLine = `${productCount || "..............."} unité(s).`;
-  secondPage.drawText(quantityLine, {
-    x: 50,
+  yPosition -= 20;
+  const line3 = `${productCount || "..............."} unité(s).`;
+  const line3Width = font.widthOfTextAtSize(line3, textSize);
+  secondPage.drawText(line3, {
+    x: centerX - line3Width / 2,
     y: yPosition,
     size: textSize,
     font: font,
     color: blueColor,
   });
 
-  yPosition -= 60; // Add more space before "Fait à"
+  yPosition -= 80; // Add more space before "Fait à"
 
-  // "Fait à" section
+  // "Fait à" section - centered
   const [day, month, year] = date.split('/');
   const faitLine = `Fait à : Casablanca                                                         Le     ${day}  /  ${month}  /  ${year}  .`;
+  const faitWidth = font.widthOfTextAtSize(faitLine, textSize);
   secondPage.drawText(faitLine, {
-    x: 50,
+    x: centerX - faitWidth / 2,
     y: yPosition,
     size: textSize,
     font: font,
     color: blueColor,
   });
 
-  // Add unique certificate ID at the bottom
-  yPosition -= 30;
-  secondPage.drawText(`ID Certificat: ${certificateId}`, {
-    x: 50,
+  // Add unique certificate ID at the bottom - centered
+  yPosition -= 40;
+  const idText = `ID Certificat: ${certificateId}`;
+  const idWidth = boldFont.widthOfTextAtSize(idText, 10);
+  secondPage.drawText(idText, {
+    x: centerX - idWidth / 2,
     y: yPosition,
-    size: 9,
+    size: 10,
     font: boldFont,
     color: rgb(0, 0, 0),
   });
+
+  // Save certificate to registry
+  const certificates = JSON.parse(localStorage.getItem("certificates") || "[]");
+  certificates.push({
+    id: certificateId,
+    documentId: doc.id,
+    documentCode: doc.code,
+    clientName: clientName,
+    productTypes: productTypes,
+    quantity: productCount,
+    date: date,
+    createdAt: new Date().toISOString()
+  });
+  localStorage.setItem("certificates", JSON.stringify(certificates));
 
   // Save and download the PDF
   const pdfBytes = await pdfDoc.save();
@@ -111,4 +132,6 @@ export async function generateWarrantyCertificate(doc: Document) {
   link.download = `Garantie_${doc.code}.pdf`;
   link.click();
   URL.revokeObjectURL(url);
+  
+  return certificateId;
 }
