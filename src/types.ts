@@ -96,6 +96,7 @@ export interface DocumentBase {
   paymentStatus?: PaymentStatus;
   totalPaid?: number;
   includeInAccounting?: boolean; // Track if this should be included in accounting reports
+  includeTVA?: boolean; // Whether to include TVA (20%) in total
 }
 
 export interface Document extends DocumentBase {
