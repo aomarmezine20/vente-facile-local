@@ -55,92 +55,36 @@ export async function generateCertificatePdf(
   }
 
   const { width, height } = secondPage.getSize();
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-  const clientName = certificate.clientName || client?.name || "";
-  const productTypes = certificate.productTypes || doc.lines
-    .map(line => products.find(p => p.id === line.productId)?.name)
-    .filter((name, index, self) => name && self.indexOf(name) === index)
-    .join(", ") || "";
-
-  const productCount = certificate.quantity;
-  const date = certificate.date || new Date(doc.date).toLocaleDateString('fr-FR');
-
-  const textSize = 12;
-  const blueColor = rgb(0.18, 0.31, 0.62);
   const centerX = width / 2;
-  let yPosition = height / 2 + 70;
+  const blueColor = rgb(0.18, 0.31, 0.62);
+  
+  // Only write ID and Type on the certificate - centered in second page
+  let yPosition = height / 2 + 50;
 
-  // Main certificate text in blue - centered
-  const line1 = `Ce certificat est destiné à Mr/Mme ${clientName} pour l'achat de`;
-  const line1Width = font.widthOfTextAtSize(line1, textSize);
-  secondPage.drawText(line1, {
-    x: centerX - line1Width / 2,
-    y: yPosition,
-    size: textSize,
-    font: font,
-    color: blueColor,
-  });
-
-  yPosition -= 20;
-  const line2 = `${productTypes} marque SCRIGNO, de type ${productTypes} et d'une quantité de`;
-  const line2Width = font.widthOfTextAtSize(line2, textSize);
-  secondPage.drawText(line2, {
-    x: centerX - line2Width / 2,
-    y: yPosition,
-    size: textSize,
-    font: font,
-    color: blueColor,
-  });
-
-  yPosition -= 20;
-  const line3 = `${productCount} unité(s).`;
-  const line3Width = font.widthOfTextAtSize(line3, textSize);
-  secondPage.drawText(line3, {
-    x: centerX - line3Width / 2,
-    y: yPosition,
-    size: textSize,
-    font: font,
-    color: blueColor,
-  });
-
-  yPosition -= 80;
-
-  // "Fait à" section - centered
-  const [day, month, year] = date.split('/');
-  const faitLine = `Fait à : Casablanca                                                         Le     ${day}  /  ${month}  /  ${year}  .`;
-  const faitWidth = font.widthOfTextAtSize(faitLine, textSize);
-  secondPage.drawText(faitLine, {
-    x: centerX - faitWidth / 2,
-    y: yPosition,
-    size: textSize,
-    font: font,
-    color: blueColor,
-  });
-
-  // Add unique certificate ID at the bottom - centered
-  yPosition -= 40;
-  const idText = `ID Certificat: ${certificate.id}`;
-  const idWidth = boldFont.widthOfTextAtSize(idText, 10);
+  // Certificate ID - bold and prominent
+  const idText = `ID: ${certificate.id}`;
+  const idWidth = boldFont.widthOfTextAtSize(idText, 14);
   secondPage.drawText(idText, {
     x: centerX - idWidth / 2,
     y: yPosition,
-    size: 10,
+    size: 14,
     font: boldFont,
-    color: rgb(0, 0, 0),
+    color: blueColor,
   });
 
-  // Add client type badge
-  yPosition -= 20;
+  // Client type badge
+  yPosition -= 25;
   const typeText = `Type: ${certificate.clientType.toUpperCase()}`;
-  const typeWidth = font.widthOfTextAtSize(typeText, 9);
+  const typeWidth = font.widthOfTextAtSize(typeText, 11);
   secondPage.drawText(typeText, {
     x: centerX - typeWidth / 2,
     y: yPosition,
-    size: 9,
+    size: 11,
     font: font,
-    color: rgb(0.4, 0.4, 0.4),
+    color: rgb(0.3, 0.3, 0.3),
   });
 
   // Save and download the PDF

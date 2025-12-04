@@ -44,6 +44,10 @@ export default function CertificateManager() {
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [newTemplate, setNewTemplate] = useState({ name: "", dataUrl: "" });
   
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  
   // Generate certificate form
   const [selectedDocument, setSelectedDocument] = useState("");
   const [clientType, setClientType] = useState<"revendeur" | "particulier" | "entreprise">("particulier");
@@ -191,6 +195,16 @@ export default function CertificateManager() {
     
     return matchesSearch && matchesFilter;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCertificates.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCertificates = filteredCertificates.slice(startIndex, startIndex + itemsPerPage);
+  
+  // Reset to first page when search/filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterType]);
 
   return (
     <div className="space-y-4">
@@ -347,59 +361,105 @@ export default function CertificateManager() {
                   {searchTerm ? "Aucun certificat trouvé" : "Aucun certificat émis pour le moment"}
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID Certificat</TableHead>
-                      <TableHead>Document</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Produits</TableHead>
-                      <TableHead>Qté</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredCertificates.map((cert) => (
-                      <TableRow key={cert.id}>
-                        <TableCell>
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {cert.id}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{cert.documentCode}</TableCell>
-                        <TableCell>{cert.clientName || "-"}</TableCell>
-                        <TableCell>
-                          <Badge variant={cert.clientType === "revendeur" ? "default" : "secondary"}>
-                            {cert.clientType}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">{cert.productTypes || "-"}</TableCell>
-                        <TableCell>{cert.quantity}</TableCell>
-                        <TableCell>{cert.date}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => navigate(`/document/${cert.documentId}`)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteCertificate(cert.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                <>
+                  <div className="text-sm text-muted-foreground mb-2">
+                    {filteredCertificates.length} certificat(s) trouvé(s) - Page {currentPage} sur {totalPages}
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID Certificat</TableHead>
+                        <TableHead>Document</TableHead>
+                        <TableHead>Client</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Produits</TableHead>
+                        <TableHead>Qté</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedCertificates.map((cert) => (
+                        <TableRow key={cert.id}>
+                          <TableCell>
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {cert.id}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{cert.documentCode}</TableCell>
+                          <TableCell>{cert.clientName || "-"}</TableCell>
+                          <TableCell>
+                            <Badge variant={cert.clientType === "revendeur" ? "default" : "secondary"}>
+                              {cert.clientType}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">{cert.productTypes || "-"}</TableCell>
+                          <TableCell>{cert.quantity}</TableCell>
+                          <TableCell>{cert.date}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => navigate(`/document/${cert.documentId}`)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteCertificate(cert.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {/* Pagination controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                      >
+                        «
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        ‹
+                      </Button>
+                      <span className="px-3 text-sm">
+                        {currentPage} / {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        ›
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                      >
+                        »
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
