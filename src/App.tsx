@@ -20,7 +20,7 @@ import ClientManager from "./pages/ClientManager";
 import Reports from "./pages/Reports";
 import Comptabilite from "./pages/Comptabilite";
 import Backup from "./pages/Backup";
-import CertificateRegistry from "./pages/CertificateRegistry";
+import CertificateManager from "./pages/CertificateManager";
 import runSeed from "./seed";
 
 const queryClient = new QueryClient();
@@ -71,7 +71,7 @@ const App = () => (
                   {/* Admin */}
                   <Route path="/admin" element={<AdminPage />} />
                   <Route path="/backup" element={<Backup />} />
-                  <Route path="/certificates" element={<CertificateRegistry />} />
+                  <Route path="/certificates" element={<CertificateManager />} />
 
                   <Route path="*" element={<NotFound />} />
                 </Routes>
