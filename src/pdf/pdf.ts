@@ -136,5 +136,24 @@ export function generateDocumentPdf(doc: Document) {
     }
   }
 
+  // Add footer
+  const footerY = 25;
+  pdf.setFontSize(8);
+  pdf.setTextColor(0, 0, 0);
+  
+  // Draw footer line
+  pdf.setDrawColor(0, 0, 0);
+  pdf.setLineWidth(0.5);
+  pdf.line(15, footerY + 10, 195, footerY + 10);
+  
+  // Footer text - centered
+  pdf.setFont("helvetica", "bold");
+  pdf.text("S.A.R.L au capital de 200.000.00 DH* Siège : 14 Rue Hatimi Riviera, Casablanca", 105, footerY + 5, { align: "center" });
+  
+  pdf.setFont("helvetica", "normal");
+  pdf.text("Tél : +212 661 85 71 32 / +212 6 19 57 23 19 / +212 5 22 99 52 52", 105, footerY, { align: "center" });
+  pdf.text("Email: contact.smartexit@gmail.com", 105, footerY - 5, { align: "center" });
+  pdf.text("RC: 487155 - IF: 48541278 - TP: 32252429 ICE: 002726225000084", 105, footerY - 10, { align: "center" });
+
   pdf.save(`${doc.code}.pdf`);
 }

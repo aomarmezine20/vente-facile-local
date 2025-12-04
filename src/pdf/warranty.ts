@@ -1,54 +1,76 @@
-import { PDFDocument, rgb, StandardFonts, PageSizes } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { Document } from "@/types";
 import { getCompany, getClients, getProducts } from "@/store/localdb";
-import warrantyTemplate from "@/assets/warranty-template.pdf";
 
-export async function generateWarrantyCertificate(doc: Document): Promise<string> {
+interface Certificate {
+  id: string;
+  clientName: string;
+  clientType: "revendeur" | "particulier" | "entreprise";
+  productTypes: string;
+  quantity: number;
+  date: string;
+}
+
+export async function generateCertificatePdf(
+  doc: Document, 
+  certificate: Certificate,
+  templateDataUrl?: string
+): Promise<string> {
   const company = getCompany();
   const clients = getClients();
   const products = getProducts();
   const client = doc.clientId ? clients.find((c) => c.id === doc.clientId) : null;
 
-  // Load the template PDF (both pages)
-  const templateBytes = await fetch(warrantyTemplate).then(res => res.arrayBuffer());
-  const templateDoc = await PDFDocument.load(templateBytes);
-  
-  // Create a new PDF document
-  const pdfDoc = await PDFDocument.create();
-  
-  // Copy both pages from template
-  const [firstPage, secondPage] = await pdfDoc.copyPages(templateDoc, [0, 1]);
-  pdfDoc.addPage(firstPage);
-  pdfDoc.addPage(secondPage);
-  
-  // Get page dimensions from the second page
+  let pdfDoc: PDFDocument;
+  let secondPage: any;
+
+  // Check for uploaded template first
+  const storedTemplates = localStorage.getItem("certificateTemplates");
+  const templates = storedTemplates ? JSON.parse(storedTemplates) : [];
+  const activeTemplate = templateDataUrl || (templates.length > 0 ? templates[0].dataUrl : null);
+
+  if (activeTemplate) {
+    // Load the uploaded template
+    const templateBytes = await fetch(activeTemplate).then(res => res.arrayBuffer());
+    const templateDoc = await PDFDocument.load(templateBytes);
+    
+    pdfDoc = await PDFDocument.create();
+    const pageCount = templateDoc.getPageCount();
+    
+    if (pageCount >= 2) {
+      const [firstPage, page2] = await pdfDoc.copyPages(templateDoc, [0, 1]);
+      pdfDoc.addPage(firstPage);
+      pdfDoc.addPage(page2);
+      secondPage = pdfDoc.getPages()[1];
+    } else {
+      const [firstPage] = await pdfDoc.copyPages(templateDoc, [0]);
+      pdfDoc.addPage(firstPage);
+      secondPage = pdfDoc.getPages()[0];
+    }
+  } else {
+    // Create a blank certificate if no template
+    pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595, 842]);
+    secondPage = page;
+  }
+
   const { width, height } = secondPage.getSize();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  
-  // Prepare client information
-  const clientName = client?.name || "";
-  
-  // Get product types and quantity
-  const productTypes = doc.lines
+
+  const clientName = certificate.clientName || client?.name || "";
+  const productTypes = certificate.productTypes || doc.lines
     .map(line => products.find(p => p.id === line.productId)?.name)
     .filter((name, index, self) => name && self.indexOf(name) === index)
     .join(", ") || "";
-  
-  const productCount = doc.lines.reduce((sum, line) => sum + line.qty, 0);
-  
-  const location = "Casablanca";
-  const date = new Date(doc.date).toLocaleDateString('fr-FR');
-  
-  // Generate unique certificate ID
-  const timestamp = Date.now();
-  const certificateId = `SE-${doc.code}-${timestamp.toString().slice(-6)}`;
 
-  // Calculate center position for text on second page
+  const productCount = certificate.quantity;
+  const date = certificate.date || new Date(doc.date).toLocaleDateString('fr-FR');
+
   const textSize = 12;
-  const blueColor = rgb(0.18, 0.31, 0.62); // Blue color for the text
+  const blueColor = rgb(0.18, 0.31, 0.62);
   const centerX = width / 2;
-  let yPosition = height / 2 + 70; // Start from center of page, slightly higher
+  let yPosition = height / 2 + 70;
 
   // Main certificate text in blue - centered
   const line1 = `Ce certificat est destiné à Mr/Mme ${clientName} pour l'achat de`;
@@ -83,7 +105,7 @@ export async function generateWarrantyCertificate(doc: Document): Promise<string
     color: blueColor,
   });
 
-  yPosition -= 80; // Add more space before "Fait à"
+  yPosition -= 80;
 
   // "Fait à" section - centered
   const [day, month, year] = date.split('/');
@@ -99,7 +121,7 @@ export async function generateWarrantyCertificate(doc: Document): Promise<string
 
   // Add unique certificate ID at the bottom - centered
   yPosition -= 40;
-  const idText = `ID Certificat: ${certificateId}`;
+  const idText = `ID Certificat: ${certificate.id}`;
   const idWidth = boldFont.widthOfTextAtSize(idText, 10);
   secondPage.drawText(idText, {
     x: centerX - idWidth / 2,
@@ -109,19 +131,17 @@ export async function generateWarrantyCertificate(doc: Document): Promise<string
     color: rgb(0, 0, 0),
   });
 
-  // Save certificate to registry
-  const certificates = JSON.parse(localStorage.getItem("certificates") || "[]");
-  certificates.push({
-    id: certificateId,
-    documentId: doc.id,
-    documentCode: doc.code,
-    clientName: clientName,
-    productTypes: productTypes,
-    quantity: productCount,
-    date: date,
-    createdAt: new Date().toISOString()
+  // Add client type badge
+  yPosition -= 20;
+  const typeText = `Type: ${certificate.clientType.toUpperCase()}`;
+  const typeWidth = font.widthOfTextAtSize(typeText, 9);
+  secondPage.drawText(typeText, {
+    x: centerX - typeWidth / 2,
+    y: yPosition,
+    size: 9,
+    font: font,
+    color: rgb(0.4, 0.4, 0.4),
   });
-  localStorage.setItem("certificates", JSON.stringify(certificates));
 
   // Save and download the PDF
   const pdfBytes = await pdfDoc.save();
@@ -129,9 +149,47 @@ export async function generateWarrantyCertificate(doc: Document): Promise<string
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `Garantie_${doc.code}.pdf`;
+  link.download = `Garantie_${certificate.id}.pdf`;
   link.click();
   URL.revokeObjectURL(url);
-  
-  return certificateId;
+
+  return certificate.id;
+}
+
+// Legacy function for backward compatibility
+export async function generateWarrantyCertificate(doc: Document): Promise<string> {
+  const clients = getClients();
+  const products = getProducts();
+  const client = doc.clientId ? clients.find((c) => c.id === doc.clientId) : null;
+
+  const productTypes = doc.lines
+    .map(line => products.find(p => p.id === line.productId)?.name)
+    .filter((name, index, self) => name && self.indexOf(name) === index)
+    .join(", ") || "";
+
+  const productCount = doc.lines.reduce((sum, line) => sum + line.qty, 0);
+  const timestamp = Date.now();
+  const certificateId = `SE-${doc.code}-${timestamp.toString().slice(-6)}`;
+
+  const certificate = {
+    id: certificateId,
+    clientName: client?.name || "",
+    clientType: "particulier" as const,
+    productTypes,
+    quantity: productCount,
+    date: new Date(doc.date).toLocaleDateString('fr-FR'),
+  };
+
+  // Save certificate to registry
+  const certificates = JSON.parse(localStorage.getItem("certificates") || "[]");
+  certificates.push({
+    ...certificate,
+    documentId: doc.id,
+    documentCode: doc.code,
+    articlesPerCertificate: productCount,
+    createdAt: new Date().toISOString()
+  });
+  localStorage.setItem("certificates", JSON.stringify(certificates));
+
+  return generateCertificatePdf(doc, certificate);
 }
