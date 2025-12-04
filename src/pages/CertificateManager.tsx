@@ -401,6 +401,23 @@ export default function CertificateManager() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                title="Re-télécharger le certificat"
+                                onClick={async () => {
+                                  const doc = documents.find(d => d.id === cert.documentId);
+                                  if (doc) {
+                                    await generateCertificatePdf(doc, cert, templates[0]?.dataUrl);
+                                    toast.success("Certificat téléchargé");
+                                  } else {
+                                    toast.error("Document source introuvable");
+                                  }
+                                }}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Voir la facture"
                                 onClick={() => navigate(`/document/${cert.documentId}`)}
                               >
                                 <Eye className="h-4 w-4" />
