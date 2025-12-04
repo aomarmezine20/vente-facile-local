@@ -1,15 +1,17 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { adjustStock, getClients, getDepots, getDocument, getProducts, nextCode, upsertDocument, getDocuments } from "@/store/localdb";
 import { Document, DocType, DocumentStatus } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
-import { generateWarrantyCertificate } from "@/pdf/warranty";
+import { generateCertificatePdf } from "@/pdf/warranty";
 import { toast } from "@/hooks/use-toast";
 import { PaymentManager } from "@/components/PaymentManager";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,6 +22,127 @@ function nextType(t: DocType): DocType | null {
   if (t === "BC") return "BL";
   if (t === "BL") return "FA";
   return null;
+}
+
+// Certificate Section Component
+function CertificateSection({ doc, clients, products }: { doc: Document; clients: any[]; products: any[] }) {
+  const [clientType, setClientType] = useState<"revendeur" | "particulier" | "entreprise">("particulier");
+  const [articlesPerCertificate, setArticlesPerCertificate] = useState(1);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  if (doc.type !== "FA" || doc.mode !== "vente") return null;
+
+  const client = doc.clientId ? clients.find(c => c.id === doc.clientId) : null;
+  const productTypes = doc.lines
+    .map(line => products.find(p => p.id === line.productId)?.name)
+    .filter((name, index, self) => name && self.indexOf(name) === index)
+    .join(", ");
+  const totalQty = doc.lines.reduce((sum, line) => sum + line.qty, 0);
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    try {
+      const storedTemplates = localStorage.getItem("certificateTemplates");
+      const templates = storedTemplates ? JSON.parse(storedTemplates) : [];
+      const templateUrl = templates.length > 0 ? templates[0].dataUrl : null;
+
+      const numCertificates = clientType === "revendeur" 
+        ? totalQty 
+        : Math.ceil(totalQty / articlesPerCertificate);
+
+      const existingCerts = JSON.parse(localStorage.getItem("certificates") || "[]");
+      const newCertificates: any[] = [];
+
+      for (let i = 0; i < numCertificates; i++) {
+        const timestamp = Date.now() + i;
+        const certificateId = `SE-${doc.code}-${timestamp.toString().slice(-6)}`;
+        
+        const cert = {
+          id: certificateId,
+          documentId: doc.id,
+          documentCode: doc.code,
+          clientName: client?.name || "",
+          clientType: clientType,
+          productTypes: productTypes,
+          quantity: clientType === "revendeur" ? 1 : articlesPerCertificate,
+          articlesPerCertificate: clientType === "revendeur" ? 1 : articlesPerCertificate,
+          date: new Date(doc.date).toLocaleDateString('fr-FR'),
+          createdAt: new Date().toISOString()
+        };
+
+        newCertificates.push(cert);
+        await generateCertificatePdf(doc, cert, templateUrl);
+      }
+
+      localStorage.setItem("certificates", JSON.stringify([...existingCerts, ...newCertificates]));
+      
+      toast({ 
+        title: `${numCertificates} certificat(s) généré(s)`, 
+        description: `Type: ${clientType}`,
+        duration: 5000
+      });
+    } catch (error) {
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de générer le certificat",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Certificat de garantie</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1">
+            <Label className="text-xs">Type de client</Label>
+            <Select value={clientType} onValueChange={(v: any) => setClientType(v)}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="revendeur">Revendeur</SelectItem>
+                <SelectItem value="particulier">Particulier</SelectItem>
+                <SelectItem value="entreprise">Entreprise</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {clientType !== "revendeur" && (
+            <div className="space-y-1">
+              <Label className="text-xs">Articles/certificat</Label>
+              <Input
+                type="number"
+                min={1}
+                value={articlesPerCertificate}
+                onChange={(e) => setArticlesPerCertificate(Number(e.target.value) || 1)}
+                className="w-24"
+              />
+            </div>
+          )}
+          
+          <Button 
+            variant="outline" 
+            onClick={handleGenerate}
+            disabled={isGenerating}
+          >
+            {isGenerating ? "Génération..." : "Générer certificat"}
+          </Button>
+          
+          <span className="text-xs text-muted-foreground">
+            {clientType === "revendeur" 
+              ? `${totalQty} certificat(s) seront générés`
+              : `${Math.ceil(totalQty / articlesPerCertificate)} certificat(s) seront générés`}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function DocumentView() {
@@ -192,25 +315,7 @@ export default function DocumentView() {
         <PaymentManager document={doc} />
       )}
 
-      {doc.type === "FA" && doc.mode === "vente" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Certificat de garantie</CardTitle>
-          </CardHeader>
-          <CardContent>
-              <Button variant="outline" onClick={async () => {
-                const certId = await generateWarrantyCertificate(doc);
-                toast({ 
-                  title: "Certificat généré avec succès", 
-                  description: `ID unique: ${certId}`,
-                  duration: 5000
-                });
-              }}>
-                Générer le certificat de garantie
-              </Button>
-          </CardContent>
-        </Card>
-      )}
+      <CertificateSection doc={doc} clients={clients} products={products} />
 
       <Card>
         <CardHeader>
