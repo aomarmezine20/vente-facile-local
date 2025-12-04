@@ -21,7 +21,9 @@ export function PaymentManager({ document }: PaymentManagerProps) {
   const db = getDB();
   const documentPayments = (db.payments || []).filter(p => p.documentId === document.id);
   const totalPaid = documentPayments.reduce((sum, p) => sum + p.amount, 0);
-  const documentTotal = document.lines.reduce((s, l) => s + (l.unitPrice - l.remiseAmount) * l.qty, 0);
+  const totalHT = document.lines.reduce((s, l) => s + (l.unitPrice - l.remiseAmount) * l.qty, 0);
+  const tvaAmount = document.includeTVA ? totalHT * 0.2 : 0;
+  const documentTotal = totalHT + tvaAmount;
   const remainingAmount = documentTotal - totalPaid;
 
   const [newPayment, setNewPayment] = useState({
@@ -131,18 +133,32 @@ export function PaymentManager({ document }: PaymentManagerProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="text-sm text-muted-foreground">Total facture</div>
-            <div className="text-lg font-semibold">{fmtMAD(documentTotal)}</div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground">Montant payé</div>
-            <div className="text-lg font-semibold text-green-600">{fmtMAD(totalPaid)}</div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground">Solde restant</div>
-            <div className="text-lg font-semibold text-red-600">{fmtMAD(remainingAmount)}</div>
+        <div className="space-y-3">
+          {document.includeTVA && (
+            <div className="grid grid-cols-2 gap-4 text-center text-sm">
+              <div>
+                <div className="text-muted-foreground">Total HT</div>
+                <div className="font-medium">{fmtMAD(totalHT)}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">TVA 20%</div>
+                <div className="font-medium">{fmtMAD(tvaAmount)}</div>
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-sm text-muted-foreground">Total {document.includeTVA ? "TTC" : "HT"}</div>
+              <div className="text-lg font-semibold">{fmtMAD(documentTotal)}</div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Montant payé</div>
+              <div className="text-lg font-semibold text-green-600">{fmtMAD(totalPaid)}</div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Solde restant</div>
+              <div className="text-lg font-semibold text-red-600">{fmtMAD(remainingAmount)}</div>
+            </div>
           </div>
         </div>
 
