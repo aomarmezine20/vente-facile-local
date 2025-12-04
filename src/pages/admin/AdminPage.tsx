@@ -403,7 +403,7 @@ export default function AdminPage() {
                           <Input type="number" step="0.01" value={p.price} onChange={(e) => { p.price = Number(e.target.value); upsertProduct(p); setProducts(getProducts()); }} />
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap items-center gap-2">
                             {productStock.length > 0 ? (
                               productStock.map(s => {
                                 const depot = depots.find(d => d.id === s.depotId);
@@ -416,6 +416,65 @@ export default function AdminPage() {
                             ) : (
                               <span className="text-xs text-muted-foreground">Aucun stock</span>
                             )}
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-6 px-2">
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Ajouter à un dépôt - {p.name}</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  {depots.map(depot => {
+                                    const existingStock = productStock.find(s => s.depotId === depot.id);
+                                    return (
+                                      <div key={depot.id} className="flex items-center justify-between gap-4 p-2 border rounded">
+                                        <span className="font-medium">{depot.name}</span>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm text-muted-foreground">
+                                            Stock actuel: {existingStock?.qty || 0}
+                                          </span>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            placeholder="Qté"
+                                            className="w-20"
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') {
+                                                const qty = Number((e.target as HTMLInputElement).value);
+                                                if (qty > 0) {
+                                                  adjustStock(depot.id, p.id, qty);
+                                                  setProducts(getProducts());
+                                                  toast.success(`Stock ajouté dans ${depot.name}`);
+                                                  (e.target as HTMLInputElement).value = '';
+                                                }
+                                              }
+                                            }}
+                                          />
+                                          <Button
+                                            size="sm"
+                                            onClick={(e) => {
+                                              const input = (e.target as HTMLElement).parentElement?.querySelector('input');
+                                              const qty = Number(input?.value || 0);
+                                              if (qty > 0) {
+                                                adjustStock(depot.id, p.id, qty);
+                                                setProducts(getProducts());
+                                                toast.success(`Stock ajouté dans ${depot.name}`);
+                                                if (input) input.value = '';
+                                              }
+                                            }}
+                                          >
+                                            Ajouter
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           </div>
                         </TableCell>
                       </TableRow>
