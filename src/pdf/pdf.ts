@@ -188,9 +188,9 @@ export function generateDocumentPdf(doc: Document) {
       ref,
       designation,
       qty,
-      priceHT.toFixed(2),
-      remise > 0 ? remise.toFixed(2) : "-",
-      totalLineHT.toFixed(2)
+      priceHT.toFixed(2) + " MAD",
+      remise > 0 ? remise.toFixed(2) + " MAD" : "-",
+      totalLineHT.toFixed(2) + " MAD"
     ];
   });
 
@@ -213,12 +213,12 @@ export function generateDocumentPdf(doc: Document) {
     },
     columnStyles: {
       0: { halign: 'center', cellWidth: 10 },
-      1: { halign: 'center', cellWidth: 22 },
-      2: { halign: 'left', cellWidth: 55 },
+      1: { halign: 'center', cellWidth: 20 },
+      2: { halign: 'left', cellWidth: 50 },
       3: { halign: 'center', cellWidth: 12 },
-      4: { halign: 'right', cellWidth: 28 },
-      5: { halign: 'right', cellWidth: 22 },
-      6: { halign: 'right', cellWidth: 32 },
+      4: { halign: 'right', cellWidth: 30 },
+      5: { halign: 'right', cellWidth: 25 },
+      6: { halign: 'right', cellWidth: 34 },
     },
     alternateRowStyles: {
       fillColor: [250, 250, 252],
@@ -262,20 +262,20 @@ export function generateDocumentPdf(doc: Document) {
   // Total H.T
   pdf.setFont("helvetica", "normal");
   pdf.text("Total H.T:", totalsX + 5, totalsY + 5);
-  pdf.text(totalHT.toFixed(2), totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
+  pdf.text(totalHT.toFixed(2) + " MAD", totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
   
   // Remises (if any)
   if (remiseTotal > 0) {
     totalsY += 7;
     pdf.text("Remises:", totalsX + 5, totalsY + 5);
-    pdf.text(`-${remiseTotal.toFixed(2)}`, totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
+    pdf.text(`-${remiseTotal.toFixed(2)} MAD`, totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
   }
   
   // TVA - only show if includeTVA is true
   if (includeTVA) {
     totalsY += 7;
     pdf.text("TVA 20%:", totalsX + 5, totalsY + 5);
-    pdf.text(totalTVA.toFixed(2), totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
+    pdf.text(totalTVA.toFixed(2) + " MAD", totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
   }
   
   // Separator line
@@ -284,7 +284,7 @@ export function generateDocumentPdf(doc: Document) {
   pdf.setLineWidth(0.5);
   pdf.line(totalsX + 5, totalsY, totalsX + totalsWidth - 5, totalsY);
   
-  // Final Total
+  // Final Total - always show TTC when TVA included
   totalsY += 6;
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(11);
