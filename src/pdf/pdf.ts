@@ -142,7 +142,6 @@ export function generateDocumentPdf(doc: Document) {
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(9);
   pdf.text(`Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}`, 20, currentY + 13);
-  pdf.text(`Dépôt: ${depotName}`, 20, currentY + 19);
 
   // Client info box
   pdf.setFillColor(245, 247, 250);
@@ -171,13 +170,13 @@ export function generateDocumentPdf(doc: Document) {
   // ============ PRODUCTS TABLE ============
   currentY = 80;
 
-  // Price entered is TTC, calculate HT (TVA = 20%)
+  // Price entered is TTC, calculate HT by subtracting 20%
   const TVA_RATE = 0.20;
   
   const body = doc.lines.map((l, idx) => {
     const p = products.find((pr) => pr.id === l.productId);
     const priceTTC = l.unitPrice;
-    const priceHT = priceTTC / (1 + TVA_RATE); // Convert TTC to HT
+    const priceHT = priceTTC * (1 - TVA_RATE); // HT = TTC - 20%
     const remise = l.remiseAmount;
     const qty = l.qty;
     const totalLineHT = (priceHT - remise) * qty;
@@ -231,15 +230,20 @@ export function generateDocumentPdf(doc: Document) {
   // ============ TOTALS SECTION ============
   const tableEndY = (pdf as any).lastAutoTable.finalY || currentY + 50;
   
-  // Calculate totals from HT prices
+  // Calculate totals: HT = TTC - 20%, TVA = 20% of TTC
   const totalHT = doc.lines.reduce((s, l) => {
-    const priceHT = l.unitPrice / (1 + TVA_RATE);
+    const priceHT = l.unitPrice * (1 - TVA_RATE);
     return s + (priceHT - l.remiseAmount) * l.qty;
   }, 0);
+  
+  const totalTVA = doc.lines.reduce((s, l) => {
+    const tvaPerUnit = l.unitPrice * TVA_RATE;
+    return s + tvaPerUnit * l.qty;
+  }, 0);
+  
   const remiseTotal = doc.lines.reduce((s, l) => s + l.remiseAmount * l.qty, 0);
   const includeTVA = doc.includeTVA === true;
-  const tvaAmount = includeTVA ? totalHT * TVA_RATE : 0;
-  const totalTTC = totalHT + tvaAmount;
+  const totalTTC = totalHT + (includeTVA ? totalTVA : 0);
 
   let totalsY = tableEndY + 8;
   const totalsX = 125;
@@ -260,7 +264,7 @@ export function generateDocumentPdf(doc: Document) {
   pdf.text("Total H.T:", totalsX + 5, totalsY + 5);
   pdf.text(totalHT.toFixed(2), totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
   
-  // Remises (already deducted in HT calculation, show for reference)
+  // Remises (if any)
   if (remiseTotal > 0) {
     totalsY += 7;
     pdf.text("Remises:", totalsX + 5, totalsY + 5);
@@ -271,7 +275,7 @@ export function generateDocumentPdf(doc: Document) {
   if (includeTVA) {
     totalsY += 7;
     pdf.text("TVA 20%:", totalsX + 5, totalsY + 5);
-    pdf.text(tvaAmount.toFixed(2), totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
+    pdf.text(totalTVA.toFixed(2), totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
   }
   
   // Separator line
