@@ -27,7 +27,6 @@ function nextType(t: DocType): DocType | null {
 // Certificate Section Component
 function CertificateSection({ doc, clients, products }: { doc: Document; clients: any[]; products: any[] }) {
   const [clientType, setClientType] = useState<"revendeur" | "particulier" | "entreprise">("particulier");
-  const [articlesPerCertificate, setArticlesPerCertificate] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
 
   if (doc.type !== "FA" || doc.mode !== "vente") return null;
@@ -46,15 +45,34 @@ function CertificateSection({ doc, clients, products }: { doc: Document; clients
       const templates = storedTemplates ? JSON.parse(storedTemplates) : [];
       const templateUrl = templates.length > 0 ? templates[0].dataUrl : null;
 
-      const numCertificates = clientType === "revendeur" 
-        ? totalQty 
-        : Math.ceil(totalQty / articlesPerCertificate);
-
       const existingCerts = JSON.parse(localStorage.getItem("certificates") || "[]");
       const newCertificates: any[] = [];
 
-      for (let i = 0; i < numCertificates; i++) {
-        const timestamp = Date.now() + i;
+      if (clientType === "revendeur") {
+        // For revendeur: generate 1 certificate per article
+        for (let i = 0; i < totalQty; i++) {
+          const timestamp = Date.now() + i;
+          const certificateId = `SE-${doc.code}-${timestamp.toString().slice(-6)}`;
+          
+          const cert = {
+            id: certificateId,
+            documentId: doc.id,
+            documentCode: doc.code,
+            clientName: client?.name || "",
+            clientType: clientType,
+            productTypes: productTypes,
+            quantity: 1,
+            articlesPerCertificate: 1,
+            date: new Date(doc.date).toLocaleDateString('fr-FR'),
+            createdAt: new Date().toISOString()
+          };
+
+          newCertificates.push(cert);
+          await generateCertificatePdf(doc, cert, templateUrl);
+        }
+      } else {
+        // For particulier and entreprise: generate 1 certificate for ALL articles
+        const timestamp = Date.now();
         const certificateId = `SE-${doc.code}-${timestamp.toString().slice(-6)}`;
         
         const cert = {
@@ -64,8 +82,8 @@ function CertificateSection({ doc, clients, products }: { doc: Document; clients
           clientName: client?.name || "",
           clientType: clientType,
           productTypes: productTypes,
-          quantity: clientType === "revendeur" ? 1 : articlesPerCertificate,
-          articlesPerCertificate: clientType === "revendeur" ? 1 : articlesPerCertificate,
+          quantity: totalQty,
+          articlesPerCertificate: totalQty,
           date: new Date(doc.date).toLocaleDateString('fr-FR'),
           createdAt: new Date().toISOString()
         };
@@ -76,6 +94,7 @@ function CertificateSection({ doc, clients, products }: { doc: Document; clients
 
       localStorage.setItem("certificates", JSON.stringify([...existingCerts, ...newCertificates]));
       
+      const numCertificates = newCertificates.length;
       toast({ 
         title: `${numCertificates} certificat(s) généré(s)`, 
         description: `Type: ${clientType}`,
@@ -113,19 +132,6 @@ function CertificateSection({ doc, clients, products }: { doc: Document; clients
             </Select>
           </div>
           
-          {clientType !== "revendeur" && (
-            <div className="space-y-1">
-              <Label className="text-xs">Articles/certificat</Label>
-              <Input
-                type="number"
-                min={1}
-                value={articlesPerCertificate}
-                onChange={(e) => setArticlesPerCertificate(Number(e.target.value) || 1)}
-                className="w-24"
-              />
-            </div>
-          )}
-          
           <Button 
             variant="outline" 
             onClick={handleGenerate}
@@ -136,8 +142,8 @@ function CertificateSection({ doc, clients, products }: { doc: Document; clients
           
           <span className="text-xs text-muted-foreground">
             {clientType === "revendeur" 
-              ? `${totalQty} certificat(s) seront générés`
-              : `${Math.ceil(totalQty / articlesPerCertificate)} certificat(s) seront générés`}
+              ? `${totalQty} certificat(s) seront générés (1 par article)`
+              : `1 certificat sera généré (${totalQty} articles)`}
           </span>
         </div>
       </CardContent>
