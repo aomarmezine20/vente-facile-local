@@ -229,18 +229,20 @@ export function generateDocumentPdf(doc: Document) {
   
   const subtotal = doc.lines.reduce((s, l) => s + (l.unitPrice - l.remiseAmount) * l.qty, 0);
   const remiseTotal = doc.lines.reduce((s, l) => s + l.remiseAmount * l.qty, 0);
-  const tva = subtotal * 0.20;
-  const totalTTC = subtotal + tva;
+  const includeTVA = doc.includeTVA === true;
+  const tva = includeTVA ? subtotal * 0.20 : 0;
+  const totalFinal = subtotal + tva;
 
   let totalsY = tableEndY + 8;
   const totalsX = 125;
   const totalsWidth = 70;
+  const boxHeight = includeTVA ? 40 : 30;
   
   // Totals box with styling
   pdf.setFillColor(245, 247, 250);
-  pdf.roundedRect(totalsX, totalsY - 3, totalsWidth, 40, 2, 2, 'F');
+  pdf.roundedRect(totalsX, totalsY - 3, totalsWidth, boxHeight, 2, 2, 'F');
   pdf.setDrawColor(200, 200, 200);
-  pdf.roundedRect(totalsX, totalsY - 3, totalsWidth, 40, 2, 2);
+  pdf.roundedRect(totalsX, totalsY - 3, totalsWidth, boxHeight, 2, 2);
 
   pdf.setFontSize(9);
   pdf.setTextColor(60, 60, 60);
@@ -257,10 +259,12 @@ export function generateDocumentPdf(doc: Document) {
     pdf.text(`-${fmtMAD(remiseTotal)}`, totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
   }
   
-  // TVA
-  totalsY += 7;
-  pdf.text("TVA 20%:", totalsX + 5, totalsY + 5);
-  pdf.text(fmtMAD(tva), totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
+  // TVA - only show if includeTVA is true
+  if (includeTVA) {
+    totalsY += 7;
+    pdf.text("TVA 20%:", totalsX + 5, totalsY + 5);
+    pdf.text(fmtMAD(tva), totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
+  }
   
   // Separator line
   totalsY += 8;
@@ -268,13 +272,13 @@ export function generateDocumentPdf(doc: Document) {
   pdf.setLineWidth(0.5);
   pdf.line(totalsX + 5, totalsY, totalsX + totalsWidth - 5, totalsY);
   
-  // Total TTC
+  // Total label based on TVA inclusion
   totalsY += 6;
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(11);
   pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.text("TOTAL TTC:", totalsX + 5, totalsY + 2);
-  pdf.text(fmtMAD(totalTTC) + " MAD", totalsX + totalsWidth - 5, totalsY + 2, { align: "right" });
+  pdf.text(includeTVA ? "TOTAL TTC:" : "TOTAL H.T:", totalsX + 5, totalsY + 2);
+  pdf.text(fmtMAD(totalFinal) + " MAD", totalsX + totalsWidth - 5, totalsY + 2, { align: "right" });
 
   // Amount in words on the left
   let leftY = tableEndY + 10;
@@ -286,7 +290,7 @@ export function generateDocumentPdf(doc: Document) {
   pdf.setFontSize(9);
   pdf.setTextColor(50, 50, 50);
   
-  const amountWords = amountToFrenchWords(totalTTC);
+  const amountWords = amountToFrenchWords(totalFinal);
   const splitWords = pdf.splitTextToSize(amountWords, 100);
   pdf.text(splitWords, 15, leftY + 5);
 
@@ -312,7 +316,7 @@ export function generateDocumentPdf(doc: Document) {
     
     if (payments.length > 0) {
       const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-      const remaining = totalTTC - totalPaid;
+      const remaining = totalFinal - totalPaid;
       
       const methodLabels: Record<string, string> = {
         especes: "Espèces",
