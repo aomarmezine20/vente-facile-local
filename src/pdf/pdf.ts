@@ -96,13 +96,13 @@ export function generateDocumentPdf(doc: Document) {
   pdf.setTextColor(255, 255, 255);
   pdf.setFontSize(18);
   pdf.setFont("helvetica", "bold");
-  pdf.text(company.name || "SMART EXIT", 45, 15);
+  pdf.text(company.name || "SMART EXIT", 45, 17);
   
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(9);
-  if (company.address) pdf.text(company.address, 45, 22);
+  if (company.address) pdf.text(company.address, 45, 24);
   const contactLine = [company.phone, company.email].filter(Boolean).join(" | ");
-  if (contactLine) pdf.text(contactLine, 45, 28);
+  if (contactLine) pdf.text(contactLine, 45, 30);
 
   // Document type badge on right
   pdf.setFillColor(255, 255, 255);
@@ -171,12 +171,16 @@ export function generateDocumentPdf(doc: Document) {
   // ============ PRODUCTS TABLE ============
   currentY = 80;
 
+  // Price entered is TTC, calculate HT (TVA = 20%)
+  const TVA_RATE = 0.20;
+  
   const body = doc.lines.map((l, idx) => {
     const p = products.find((pr) => pr.id === l.productId);
-    const pu = l.unitPrice;
+    const priceTTC = l.unitPrice;
+    const priceHT = priceTTC / (1 + TVA_RATE); // Convert TTC to HT
     const remise = l.remiseAmount;
     const qty = l.qty;
-    const totalHT = (pu - remise) * qty;
+    const totalLineHT = (priceHT - remise) * qty;
     const ref = p?.sku || "-";
     const designation = l.description || p?.name || "";
     
@@ -185,14 +189,14 @@ export function generateDocumentPdf(doc: Document) {
       ref,
       designation,
       qty,
-      fmtMAD(pu),
-      remise > 0 ? fmtMAD(remise) : "-",
-      fmtMAD(totalHT)
+      priceHT.toFixed(2),
+      remise > 0 ? remise.toFixed(2) : "-",
+      totalLineHT.toFixed(2)
     ];
   });
 
   autoTable(pdf, {
-    head: [["N°", "Réf.", "Désignation", "Qté", "P.U.H.T", "Remise", "Total H.T"]],
+    head: [["N°", "Réf.", "Désignation", "Qté", "P.U. H.T", "Remise", "Montant H.T"]],
     body,
     startY: currentY,
     styles: { 
@@ -213,9 +217,9 @@ export function generateDocumentPdf(doc: Document) {
       1: { halign: 'center', cellWidth: 22 },
       2: { halign: 'left', cellWidth: 55 },
       3: { halign: 'center', cellWidth: 12 },
-      4: { halign: 'right', cellWidth: 30, minCellWidth: 30 },
+      4: { halign: 'right', cellWidth: 28 },
       5: { halign: 'right', cellWidth: 22 },
-      6: { halign: 'right', cellWidth: 34, minCellWidth: 34 },
+      6: { halign: 'right', cellWidth: 32 },
     },
     alternateRowStyles: {
       fillColor: [250, 250, 252],
@@ -227,16 +231,20 @@ export function generateDocumentPdf(doc: Document) {
   // ============ TOTALS SECTION ============
   const tableEndY = (pdf as any).lastAutoTable.finalY || currentY + 50;
   
-  const subtotal = doc.lines.reduce((s, l) => s + (l.unitPrice - l.remiseAmount) * l.qty, 0);
+  // Calculate totals from HT prices
+  const totalHT = doc.lines.reduce((s, l) => {
+    const priceHT = l.unitPrice / (1 + TVA_RATE);
+    return s + (priceHT - l.remiseAmount) * l.qty;
+  }, 0);
   const remiseTotal = doc.lines.reduce((s, l) => s + l.remiseAmount * l.qty, 0);
   const includeTVA = doc.includeTVA === true;
-  const tva = includeTVA ? subtotal * 0.20 : 0;
-  const totalFinal = subtotal + tva;
+  const tvaAmount = includeTVA ? totalHT * TVA_RATE : 0;
+  const totalTTC = totalHT + tvaAmount;
 
   let totalsY = tableEndY + 8;
   const totalsX = 125;
   const totalsWidth = 70;
-  const boxHeight = includeTVA ? 40 : 30;
+  const boxHeight = includeTVA ? 45 : 30;
   
   // Totals box with styling
   pdf.setFillColor(245, 247, 250);
@@ -250,20 +258,20 @@ export function generateDocumentPdf(doc: Document) {
   // Total H.T
   pdf.setFont("helvetica", "normal");
   pdf.text("Total H.T:", totalsX + 5, totalsY + 5);
-  pdf.text(fmtMAD(subtotal), totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
+  pdf.text(totalHT.toFixed(2), totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
   
-  // Remises
+  // Remises (already deducted in HT calculation, show for reference)
   if (remiseTotal > 0) {
     totalsY += 7;
     pdf.text("Remises:", totalsX + 5, totalsY + 5);
-    pdf.text(`-${fmtMAD(remiseTotal)}`, totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
+    pdf.text(`-${remiseTotal.toFixed(2)}`, totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
   }
   
   // TVA - only show if includeTVA is true
   if (includeTVA) {
     totalsY += 7;
     pdf.text("TVA 20%:", totalsX + 5, totalsY + 5);
-    pdf.text(fmtMAD(tva), totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
+    pdf.text(tvaAmount.toFixed(2), totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
   }
   
   // Separator line
@@ -272,13 +280,16 @@ export function generateDocumentPdf(doc: Document) {
   pdf.setLineWidth(0.5);
   pdf.line(totalsX + 5, totalsY, totalsX + totalsWidth - 5, totalsY);
   
-  // Total label based on TVA inclusion
+  // Final Total
   totalsY += 6;
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(11);
   pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.text(includeTVA ? "TOTAL TTC:" : "TOTAL H.T:", totalsX + 5, totalsY + 2);
-  pdf.text(fmtMAD(totalFinal) + " MAD", totalsX + totalsWidth - 5, totalsY + 2, { align: "right" });
+  
+  const finalTotal = includeTVA ? totalTTC : totalHT;
+  const totalLabel = includeTVA ? "TOTAL TTC:" : "TOTAL H.T:";
+  pdf.text(totalLabel, totalsX + 5, totalsY + 2);
+  pdf.text(finalTotal.toFixed(2) + " MAD", totalsX + totalsWidth - 5, totalsY + 2, { align: "right" });
 
   // Amount in words on the left
   let leftY = tableEndY + 10;
@@ -290,7 +301,7 @@ export function generateDocumentPdf(doc: Document) {
   pdf.setFontSize(9);
   pdf.setTextColor(50, 50, 50);
   
-  const amountWords = amountToFrenchWords(totalFinal);
+  const amountWords = amountToFrenchWords(finalTotal);
   const splitWords = pdf.splitTextToSize(amountWords, 100);
   pdf.text(splitWords, 15, leftY + 5);
 
@@ -316,7 +327,7 @@ export function generateDocumentPdf(doc: Document) {
     
     if (payments.length > 0) {
       const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-      const remaining = totalFinal - totalPaid;
+      const remaining = finalTotal - totalPaid;
       
       const methodLabels: Record<string, string> = {
         especes: "Espèces",
