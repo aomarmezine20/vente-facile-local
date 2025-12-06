@@ -81,45 +81,57 @@ export function generateDocumentPdf(doc: Document) {
   // ============ HEADER SECTION ============
   let currentY = 12;
 
-  // Company header with background
+  // Elegant header frame with border only (no fill)
+  pdf.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  pdf.setLineWidth(1.5);
+  pdf.roundedRect(10, 8, pageWidth - 20, 32, 3, 3, 'S');
+  
+  // Decorative accent line at top
   pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.rect(0, 0, pageWidth, 35, 'F');
+  pdf.rect(10, 8, pageWidth - 20, 2, 'F');
 
   // Company logo
   if (company.logoDataUrl) {
     try {
-      pdf.addImage(company.logoDataUrl, "PNG", 15, 5, 25, 25);
+      pdf.addImage(company.logoDataUrl, "PNG", 15, 14, 22, 22);
     } catch {}
   }
 
-  // Company name and info - white text on dark background
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(18);
+  // Company name and info - dark text
+  pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  pdf.setFontSize(16);
   pdf.setFont("helvetica", "bold");
-  pdf.text(company.name || "SMART EXIT", 45, 17);
+  pdf.text(company.name || "SMART EXIT", 42, 20);
   
+  pdf.setTextColor(80, 80, 80);
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(9);
-  if (company.address) pdf.text(company.address, 45, 24);
+  pdf.setFontSize(8);
+  if (company.address) pdf.text(company.address, 42, 26);
   const contactLine = [company.phone, company.email].filter(Boolean).join(" | ");
-  if (contactLine) pdf.text(contactLine, 45, 30);
+  if (contactLine) pdf.text(contactLine, 42, 31);
 
-  // Document type badge on right
-  pdf.setFillColor(255, 255, 255);
-  pdf.roundedRect(140, 8, 55, 20, 3, 3, 'F');
+  // Document type badge on right with elegant border
+  pdf.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  pdf.setLineWidth(1);
+  pdf.roundedRect(138, 12, 58, 24, 2, 2, 'S');
+  
+  // Small accent fill at top of badge
+  pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  pdf.rect(138, 12, 58, 5, 'F');
   
   pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.setFontSize(12);
+  pdf.setFontSize(11);
   pdf.setFont("helvetica", "bold");
   const typeMap: Record<string, Record<string, string>> = {
     vente: { DV: "DEVIS", BC: "BON DE COMMANDE", BL: "BON DE LIVRAISON", BR: "BON DE RETOUR", FA: "FACTURE" },
     achat: { DV: "DEVIS", BC: "BON DE COMMANDE", BL: "BON DE RÉCEPTION", BR: "BON DE RETOUR", FA: "FACTURE" },
   };
-  pdf.text(typeMap[doc.mode][doc.type], 167.5, 16, { align: "center" });
+  pdf.text(typeMap[doc.mode][doc.type], 167, 24, { align: "center" });
   
   pdf.setFontSize(9);
   pdf.setFont("helvetica", "normal");
-  pdf.text(`N° ${doc.code}`, 167.5, 23, { align: "center" });
+  pdf.setTextColor(60, 60, 60);
+  pdf.text(`N° ${doc.code}`, 167, 31, { align: "center" });
 
   // Reset text color
   pdf.setTextColor(0, 0, 0);
