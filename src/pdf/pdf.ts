@@ -59,9 +59,13 @@ function amountToFrenchWords(amount: number): string {
   return result.charAt(0).toUpperCase() + result.slice(1);
 }
 
-// Format number with French locale
+// Format number - avoid narrow no-break space (0x202f) that pdf-lib can't encode
 function formatMAD(num: number): string {
-  return num.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MAD';
+  // Use manual formatting to avoid French locale's narrow no-break space
+  const fixed = num.toFixed(2);
+  const parts = fixed.split('.');
+  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' '); // Regular space
+  return intPart + ',' + parts[1] + ' MAD';
 }
 
 export async function generateDocumentPdf(doc: Document) {
