@@ -273,7 +273,7 @@ export default function DocumentView() {
               Marquer comptabilisée
             </Button>
           )}
-          <Button variant="outline" onClick={() => generateDocumentPdf(doc)}>
+          <Button variant="outline" onClick={() => generateDocumentPdf(doc).catch(console.error)}>
             PDF
           </Button>
         </div>
