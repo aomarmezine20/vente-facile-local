@@ -159,12 +159,16 @@ export default function DocumentView() {
   const clients = getClients();
   const depots = getDepots();
 
+  // Calculate HT from TTC: HT = TTC / 1.2
   const totalHT = useMemo(
-    () => doc?.lines.reduce((s, l) => s + (l.unitPrice - l.remiseAmount) * l.qty, 0) ?? 0,
+    () => doc?.lines.reduce((s, l) => {
+      const priceHT = l.unitPrice / 1.2;
+      return s + (priceHT - l.remiseAmount) * l.qty;
+    }, 0) ?? 0,
     [doc?.lines],
   );
   
-  const tvaAmount = totalHT * 0.2;
+  const tvaAmount = totalHT * 0.2; // TVA is 20% of HT
   const total = doc?.includeTVA ? totalHT + tvaAmount : totalHT;
 
   if (!doc) return <div>Document introuvable.</div>;
@@ -292,57 +296,56 @@ export default function DocumentView() {
             <div className="text-sm text-muted-foreground">Dépôt</div>
             <div>{depot}</div>
           </div>
-          {doc.type === "FA" && doc.mode === "vente" && (
-            <div className="md:col-span-3 space-y-3">
+          {/* TVA checkbox - available for all document types */}
+          <div className="md:col-span-3 space-y-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="includeTVA"
+                checked={doc.includeTVA ?? false}
+                onCheckedChange={(checked) => {
+                  upsertDocument({ ...doc, includeTVA: checked === true });
+                  toast({ 
+                    title: checked ? "TVA incluse" : "TVA exclue",
+                    description: checked 
+                      ? `TVA 20% sera ajoutée au PDF`
+                      : "Le total sera calculé hors taxes"
+                  });
+                }}
+              />
+              <Label htmlFor="includeTVA" className="text-sm cursor-pointer">
+                Inclure la TVA (20%) dans le PDF
+                <span className="block text-xs text-muted-foreground">
+                  Afficher le total H.T, TVA et TTC sur le document
+                </span>
+              </Label>
+            </div>
+            
+            {doc.type === "FA" && doc.mode === "vente" && doc.clientId && (
               <div className="flex items-center space-x-2">
                 <Checkbox 
-                  id="includeTVA"
-                  checked={doc.includeTVA ?? false}
+                  id="includeInAccounting"
+                  checked={doc.includeInAccounting ?? true}
                   onCheckedChange={(checked) => {
-                    upsertDocument({ ...doc, includeTVA: checked === true });
+                    upsertDocument({ ...doc, includeInAccounting: checked === true });
                     toast({ 
-                      title: checked ? "TVA incluse" : "TVA exclue",
+                      title: checked ? "Inclure en comptabilité" : "Exclure de la comptabilité",
                       description: checked 
-                        ? `TVA 20% ajoutée: ${fmtMAD(totalHT * 0.2)}`
-                        : "Le total sera calculé hors taxes"
+                        ? "Cette facture sera incluse dans les rapports comptables"
+                        : "Cette facture sera exclue des rapports comptables"
                     });
                   }}
                 />
-                <Label htmlFor="includeTVA" className="text-sm cursor-pointer">
-                  Inclure la TVA (20%)
+                <Label htmlFor="includeInAccounting" className="text-sm cursor-pointer">
+                  Inclure cette facture en comptabilité
                   <span className="block text-xs text-muted-foreground">
-                    Ajouter 20% de TVA au total de la facture
+                    {clients.find(c => c.id === doc.clientId)?.type === "particulier" 
+                      ? "Pour les particuliers qui demandent une facture officielle"
+                      : "Pour toutes les factures entreprises"}
                   </span>
                 </Label>
               </div>
-              
-              {doc.clientId && (
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="includeInAccounting"
-                    checked={doc.includeInAccounting ?? true}
-                    onCheckedChange={(checked) => {
-                      upsertDocument({ ...doc, includeInAccounting: checked === true });
-                      toast({ 
-                        title: checked ? "Inclure en comptabilité" : "Exclure de la comptabilité",
-                        description: checked 
-                          ? "Cette facture sera incluse dans les rapports comptables"
-                          : "Cette facture sera exclue des rapports comptables"
-                      });
-                    }}
-                  />
-                  <Label htmlFor="includeInAccounting" className="text-sm cursor-pointer">
-                    Inclure cette facture en comptabilité
-                    <span className="block text-xs text-muted-foreground">
-                      {clients.find(c => c.id === doc.clientId)?.type === "particulier" 
-                        ? "Pour les particuliers qui demandent une facture officielle"
-                        : "Pour toutes les factures entreprises"}
-                    </span>
-                  </Label>
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
 
