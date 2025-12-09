@@ -202,7 +202,7 @@ export default function DocumentsList({ mode, type }: { mode: Mode; type: DocTyp
                           Créer BR
                         </Button>
                       )}
-                      <Button variant="outline" size="sm" onClick={() => generateDocumentPdf(d)}>
+                      <Button variant="outline" size="sm" onClick={() => generateDocumentPdf(d).catch(console.error)}>
                         PDF
                       </Button>
                       {isAdmin && !transformed && (

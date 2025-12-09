@@ -187,7 +187,7 @@ export default function AchatDocumentsList({ type: propType }: { type?: DocType 
                           Transformer → {nextType(doc.type)}
                         </Button>
                       )}
-                      <Button variant="outline" size="sm" onClick={() => generateDocumentPdf(doc)}>
+                      <Button variant="outline" size="sm" onClick={() => generateDocumentPdf(doc).catch(console.error)}>
                         PDF
                       </Button>
                       {isAdmin && !transformed && (
