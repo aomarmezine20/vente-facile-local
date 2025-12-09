@@ -8,7 +8,7 @@ function numberToFrenchWords(num: number): string {
   const units = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
   const tens = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
   
-  if (num === 0) return 'zéro';
+  if (num === 0) return 'zero';
   if (num < 0) return 'moins ' + numberToFrenchWords(-num);
   
   let words = '';
@@ -59,12 +59,11 @@ function amountToFrenchWords(amount: number): string {
   return result.charAt(0).toUpperCase() + result.slice(1);
 }
 
-// Format number - avoid narrow no-break space (0x202f) that pdf-lib can't encode
+// Format number - avoid narrow no-break space that pdf-lib can't encode
 function formatMAD(num: number): string {
-  // Use manual formatting to avoid French locale's narrow no-break space
   const fixed = num.toFixed(2);
   const parts = fixed.split('.');
-  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' '); // Regular space
+  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return intPart + ',' + parts[1] + ' MAD';
 }
 
@@ -88,10 +87,10 @@ export async function generateDocumentPdf(doc: Document) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   
-  // Colors
-  const darkColor = rgb(0.15, 0.15, 0.15);
-  const grayColor = rgb(0.35, 0.35, 0.35);
-  const greenColor = rgb(0, 0.5, 0.25);
+  // Colors matching template
+  const darkColor = rgb(0.2, 0.2, 0.2);
+  const tealColor = rgb(0.18, 0.54, 0.67); // Teal/cyan color from template
+  const greenColor = rgb(0.18, 0.54, 0.34);
   const redColor = rgb(0.7, 0.15, 0.15);
   
   // TVA Calculation: Price in system is TTC, so HT = TTC / 1.2
@@ -100,86 +99,33 @@ export async function generateDocumentPdf(doc: Document) {
   // Document type labels
   const typeMap: Record<string, Record<string, string>> = {
     vente: { DV: "DEVIS", BC: "BON DE COMMANDE", BL: "BON DE LIVRAISON", BR: "BON DE RETOUR", FA: "FACTURE" },
-    achat: { DV: "DEVIS", BC: "BON DE COMMANDE", BL: "BON DE RÉCEPTION", BR: "BON DE RETOUR", FA: "FACTURE" },
+    achat: { DV: "DEVIS", BC: "BON DE COMMANDE", BL: "BON DE RECEPTION", BR: "BON DE RETOUR", FA: "FACTURE" },
   };
 
-  // ============ CLEAR AND FILL DATA AREAS ============
+  // ========== CLEAR AND FILL DATA AREAS ==========
+  // Positions are in PDF coordinates (origin bottom-left)
   
-  // 1. Document type area (top right) - clear and write
-  page.drawRectangle({
-    x: 445,
-    y: height - 55,
-    width: 130,
-    height: 40,
-    color: rgb(1, 1, 1),
-  });
-  
-  page.drawText(typeMap[doc.mode][doc.type], {
-    x: 480,
-    y: height - 35,
-    size: 14,
-    font: boldFont,
-    color: darkColor,
-  });
-  
-  page.drawText(`N° ${doc.code}`, {
-    x: 475,
-    y: height - 52,
-    size: 10,
-    font: font,
-    color: grayColor,
-  });
+  // 1. Document type and number (top right box)
+  page.drawRectangle({ x: 628, y: height - 78, width: 140, height: 55, color: rgb(1, 1, 1) });
+  page.drawText(typeMap[doc.mode][doc.type], { x: 655, y: height - 48, size: 14, font: boldFont, color: darkColor });
+  page.drawText("N. " + doc.code, { x: 645, y: height - 68, size: 10, font, color: darkColor });
 
-  // 2. Date area (left info box) - clear and write
-  page.drawRectangle({
-    x: 42,
-    y: height - 162,
-    width: 150,
-    height: 20,
-    color: rgb(1, 1, 1),
-  });
-  
-  page.drawText(`Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}`, {
-    x: 45,
-    y: height - 155,
-    size: 10,
-    font: font,
-    color: darkColor,
-  });
+  // 2. Date field (left info box)
+  page.drawRectangle({ x: 68, y: height - 200, width: 180, height: 18, color: rgb(1, 1, 1) });
+  page.drawText("Date: " + new Date(doc.date).toLocaleDateString('fr-FR'), { x: 72, y: height - 195, size: 10, font, color: darkColor });
 
-  // 3. Client name area (right info box) - clear and write
-  page.drawRectangle({
-    x: 320,
-    y: height - 162,
-    width: 200,
-    height: 20,
-    color: rgb(1, 1, 1),
-  });
-  
-  page.drawText(clientName.substring(0, 35), {
-    x: 325,
-    y: height - 155,
-    size: 10,
-    font: boldFont,
-    color: darkColor,
-  });
+  // 3. Client name (right info box)
+  page.drawRectangle({ x: 420, y: height - 200, width: 200, height: 35, color: rgb(1, 1, 1) });
+  page.drawText(clientName.substring(0, 30), { x: 480, y: height - 185, size: 11, font: boldFont, color: darkColor });
 
-  // 4. Table body area - clear rows
-  const tableTopY = height - 195;
-  const rowHeight = 22;
-  const maxRows = 8;
-  
-  page.drawRectangle({
-    x: 40,
-    y: tableTopY - (maxRows * rowHeight),
-    width: 520,
-    height: maxRows * rowHeight,
-    color: rgb(1, 1, 1),
-  });
+  // 4. Table rows - clear data area
+  const tableY = height - 330;
+  const rowH = 42;
+  page.drawRectangle({ x: 55, y: tableY - (8 * rowH), width: 700, height: 8 * rowH, color: rgb(1, 1, 1) });
 
-  // Draw table data rows
+  // Draw table data
   doc.lines.forEach((l, idx) => {
-    if (idx >= maxRows) return; // Max rows that fit
+    if (idx >= 8) return;
     
     const p = products.find((pr) => pr.id === l.productId);
     const priceTTC = l.unitPrice;
@@ -190,25 +136,15 @@ export async function generateDocumentPdf(doc: Document) {
     const ref = p?.sku || "-";
     const designation = l.description || p?.name || "";
     
-    const y = tableTopY - (idx * rowHeight) - 15;
+    const y = tableY - (idx * rowH) - 28;
     
-    // N° Réf.
-    page.drawText(String(idx + 1), { x: 48, y, size: 9, font, color: darkColor });
-    
-    // Désignation
-    page.drawText(designation.substring(0, 32), { x: 75, y, size: 9, font, color: darkColor });
-    
-    // QTE
-    page.drawText(String(qty), { x: 295, y, size: 9, font, color: darkColor });
-    
-    // P.U.H.T
-    page.drawText(formatMAD(priceHT), { x: 330, y, size: 8, font, color: darkColor });
-    
-    // Remise
-    page.drawText(remise > 0 ? formatMAD(remise) : "-", { x: 410, y, size: 8, font, color: darkColor });
-    
-    // Total H.T
-    page.drawText(formatMAD(totalLineHT), { x: 480, y, size: 8, font, color: darkColor });
+    page.drawText(String(idx + 1), { x: 72, y, size: 10, font, color: darkColor });
+    page.drawText(ref.substring(0, 12), { x: 115, y, size: 10, font, color: darkColor });
+    page.drawText(designation.substring(0, 28), { x: 210, y, size: 10, font, color: darkColor });
+    page.drawText(String(qty), { x: 420, y, size: 10, font, color: darkColor });
+    page.drawText(formatMAD(priceHT), { x: 470, y, size: 9, font, color: darkColor });
+    page.drawText(remise > 0 ? formatMAD(remise) : "-", { x: 565, y, size: 9, font, color: darkColor });
+    page.drawText(formatMAD(totalLineHT), { x: 660, y, size: 9, font, color: darkColor });
   });
 
   // Calculate totals
@@ -222,132 +158,79 @@ export async function generateDocumentPdf(doc: Document) {
   const totalTTC = totalHT + totalTVA;
   const finalTotal = includeTVA ? totalTTC : totalHT;
 
-  // 5. Amount in words area (bottom left) - clear and write
-  const wordsY = height - 400;
-  page.drawRectangle({
-    x: 40,
-    y: wordsY - 35,
-    width: 270,
-    height: 50,
-    color: rgb(1, 1, 1),
-  });
-
-  page.drawText("Arrêtée la présente facture à la somme de:", {
-    x: 42,
-    y: wordsY,
-    size: 9,
-    font: font,
-    color: grayColor,
-  });
+  // 5. Amount in words (bottom left)
+  const wordsY = height - 545;
+  page.drawRectangle({ x: 55, y: wordsY - 20, width: 280, height: 35, color: rgb(1, 1, 1) });
+  page.drawText("Arretee la presente facture a la somme de:", { x: 58, y: wordsY + 5, size: 9, font, color: darkColor });
   
-  const amountWords = amountToFrenchWords(finalTotal);
-  const words1 = amountWords.substring(0, 45);
-  const words2 = amountWords.length > 45 ? amountWords.substring(45, 90) : "";
-  
-  page.drawText(words1, { x: 42, y: wordsY - 14, size: 10, font: boldFont, color: darkColor });
-  if (words2) {
-    page.drawText(words2, { x: 42, y: wordsY - 26, size: 10, font: boldFont, color: darkColor });
+  const words = amountToFrenchWords(finalTotal);
+  page.drawText(words.substring(0, 45), { x: 58, y: wordsY - 10, size: 10, font: boldFont, color: darkColor });
+  if (words.length > 45) {
+    page.drawText(words.substring(45), { x: 58, y: wordsY - 22, size: 10, font: boldFont, color: darkColor });
   }
 
-  // 6. Totals area (bottom right) - clear and write
-  const totalsX = 380;
-  const totalsY = height - 395;
-  
-  page.drawRectangle({
-    x: totalsX - 10,
-    y: totalsY - 55,
-    width: 180,
-    height: 70,
-    color: rgb(1, 1, 1),
-  });
+  // 6. Totals box (bottom right)
+  const totX = 490;
+  const totY = height - 530;
+  page.drawRectangle({ x: totX, y: totY - 60, width: 200, height: 80, color: rgb(1, 1, 1) });
 
-  // Total H.T
-  page.drawText("Total H.T:", { x: totalsX, y: totalsY, size: 10, font, color: darkColor });
-  page.drawText(formatMAD(totalHT), { x: totalsX + 100, y: totalsY, size: 10, font, color: darkColor });
+  page.drawText("Total H.T:", { x: totX + 10, y: totY + 10, size: 10, font, color: darkColor });
+  page.drawText(formatMAD(totalHT), { x: totX + 120, y: totY + 10, size: 10, font, color: darkColor });
 
-  let lineY = totalsY - 14;
-  
-  // Remise
   if (remiseTotal > 0) {
-    page.drawText("Remises:", { x: totalsX, y: lineY, size: 10, font, color: darkColor });
-    page.drawText(`-${formatMAD(remiseTotal)}`, { x: totalsX + 100, y: lineY, size: 10, font, color: darkColor });
-    lineY -= 14;
+    page.drawText("Remises:", { x: totX + 10, y: totY - 8, size: 10, font, color: darkColor });
+    page.drawText("-" + formatMAD(remiseTotal), { x: totX + 120, y: totY - 8, size: 10, font, color: darkColor });
   }
 
-  // TVA
   if (includeTVA) {
-    page.drawText("TVA 20%:", { x: totalsX, y: lineY, size: 10, font, color: darkColor });
-    page.drawText(formatMAD(totalTVA), { x: totalsX + 100, y: lineY, size: 10, font, color: darkColor });
-    lineY -= 14;
+    page.drawText("TVA 20%:", { x: totX + 10, y: totY - 26, size: 10, font, color: darkColor });
+    page.drawText(formatMAD(totalTVA), { x: totX + 120, y: totY - 26, size: 10, font, color: darkColor });
   }
 
-  // Final total
-  lineY -= 4;
-  const totalLabel = includeTVA ? "TOTAL TTC:" : "TOTAL H.T:";
-  page.drawText(totalLabel, { x: totalsX, y: lineY, size: 11, font: boldFont, color: darkColor });
-  page.drawText(formatMAD(finalTotal), { x: totalsX + 90, y: lineY, size: 11, font: boldFont, color: darkColor });
+  // Draw line before total
+  page.drawLine({ start: { x: totX + 5, y: totY - 35 }, end: { x: totX + 195, y: totY - 35 }, thickness: 1.5, color: tealColor });
 
-  // 7. Payment section (for invoices only) - clear and write
+  const totalLabel = includeTVA ? "TOTAL TTC:" : "TOTAL H.T:";
+  page.drawText(totalLabel, { x: totX + 10, y: totY - 52, size: 12, font: boldFont, color: darkColor });
+  page.drawText(formatMAD(finalTotal), { x: totX + 110, y: totY - 52, size: 12, font: boldFont, color: darkColor });
+
+  // 7. Payment section (invoices only)
   if (doc.type === "FA") {
     const payments = db.payments.filter(p => p.documentId === doc.id);
     
-    const paymentY = height - 470;
-    page.drawRectangle({
-      x: 40,
-      y: paymentY - 60,
-      width: 220,
-      height: 80,
-      color: rgb(1, 1, 1),
-    });
+    const payY = height - 600;
+    page.drawRectangle({ x: 55, y: payY - 60, width: 280, height: 75, color: rgb(1, 1, 1) });
     
-    // Payment header box
-    page.drawRectangle({
-      x: 40,
-      y: paymentY + 5,
-      width: 110,
-      height: 16,
-      color: rgb(0.94, 0.94, 0.94),
-    });
+    // Payment header
+    page.drawRectangle({ x: 55, y: payY + 8, width: 150, height: 18, color: rgb(0.95, 0.95, 0.95) });
+    page.drawText("Mode de paiement", { x: 85, y: payY + 13, size: 10, font, color: darkColor });
     
-    page.drawText("Mode de paiement", { x: 45, y: paymentY + 10, size: 9, font, color: darkColor });
-    
-    let payY = paymentY - 10;
+    let pY = payY - 8;
     
     if (payments.length > 0) {
       const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
       const remaining = finalTotal - totalPaid;
       
       const methodLabels: Record<string, string> = {
-        especes: "Espèces",
-        cheque: "Chèque",
-        virement: "Virement bancaire",
-        carte: "Carte bancaire",
-        versement: "Versement",
-        traite: "Traite",
-        autre: "Autre"
+        especes: "Especes", cheque: "Cheque", virement: "Virement bancaire",
+        carte: "Carte bancaire", versement: "Versement", traite: "Traite", autre: "Autre"
       };
       
       payments.slice(0, 3).forEach((payment) => {
         const method = methodLabels[payment.method] || payment.method;
         const date = new Date(payment.date).toLocaleDateString('fr-FR');
-        page.drawText(`• ${method}: ${formatMAD(payment.amount)} (${date})`, {
-          x: 45, y: payY, size: 9, font, color: darkColor
-        });
-        payY -= 12;
+        page.drawText("- " + method + ": " + formatMAD(payment.amount) + " (" + date + ")", { x: 60, y: pY, size: 9, font, color: darkColor });
+        pY -= 14;
       });
       
-      payY -= 5;
+      pY -= 5;
       if (remaining > 0) {
-        page.drawText(`Reste à payer: ${formatMAD(remaining)}`, {
-          x: 45, y: payY, size: 10, font: boldFont, color: redColor
-        });
+        page.drawText("Reste a payer: " + formatMAD(remaining), { x: 60, y: pY, size: 10, font: boldFont, color: redColor });
       } else {
-        page.drawText("PAYÉ INTÉGRALEMENT", {
-          x: 45, y: payY, size: 10, font: boldFont, color: greenColor
-        });
+        page.drawText("PAYE INTEGRALEMENT", { x: 60, y: pY, size: 10, font: boldFont, color: greenColor });
       }
     } else {
-      page.drawText("• En attente de paiement", { x: 45, y: payY, size: 9, font, color: darkColor });
+      page.drawText("- En attente de paiement", { x: 60, y: pY, size: 9, font, color: darkColor });
     }
   }
 
@@ -357,7 +240,7 @@ export async function generateDocumentPdf(doc: Document) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${doc.code}.pdf`;
+  link.download = doc.code + ".pdf";
   link.click();
   URL.revokeObjectURL(url);
 }
