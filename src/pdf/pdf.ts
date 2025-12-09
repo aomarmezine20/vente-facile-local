@@ -67,7 +67,6 @@ export function generateDocumentPdf(doc: Document) {
   const depots = getDepots();
   const client = doc.clientId ? clients.find((c) => c.id === doc.clientId) : null;
   const clientName = client?.name || doc.vendorName || "-";
-  const depotName = doc.depotId ? depots.find((d) => d.id === doc.depotId)?.name : "-";
   const companyAny = company as any;
 
   const pdf = new jsPDF();
@@ -76,119 +75,88 @@ export function generateDocumentPdf(doc: Document) {
 
   // Colors
   const primaryColor: [number, number, number] = [30, 58, 95]; // Dark blue
-  const accentColor: [number, number, number] = [70, 130, 180]; // Steel blue
 
   // ============ HEADER SECTION ============
-  let currentY = 12;
+  let currentY = 10;
 
-  // Elegant header frame with border only (no fill)
-  pdf.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.setLineWidth(1.5);
-  pdf.roundedRect(10, 8, pageWidth - 20, 32, 3, 3, 'S');
-  
-  // Decorative accent line at top
-  pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.rect(10, 8, pageWidth - 20, 2, 'F');
-
-  // Company logo
+  // Two logos on left side
   if (company.logoDataUrl) {
     try {
-      pdf.addImage(company.logoDataUrl, "PNG", 15, 14, 22, 22);
+      pdf.addImage(company.logoDataUrl, "PNG", 12, currentY, 20, 20);
+      pdf.addImage(company.logoDataUrl, "PNG", 35, currentY, 20, 20);
     } catch {}
   }
 
-  // Company name and info - dark text
+  // Company name in header (large, bold, centered)
   pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.setFontSize(16);
+  pdf.setFontSize(18);
   pdf.setFont("helvetica", "bold");
-  pdf.text(company.name || "SMART EXIT", 42, 20);
-  
-  pdf.setTextColor(80, 80, 80);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8);
-  if (company.address) pdf.text(company.address, 42, 26);
-  const contactLine = [company.phone, company.email].filter(Boolean).join(" | ");
-  if (contactLine) pdf.text(contactLine, 42, 31);
+  pdf.text(company.name || "SMART EXIT", 105, currentY + 8, { align: "center" });
 
-  // Document type badge on right with elegant border
-  pdf.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.setLineWidth(1);
-  pdf.roundedRect(138, 12, 58, 24, 2, 2, 'S');
-  
-  // Small accent fill at top of badge
-  pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.rect(138, 12, 58, 5, 'F');
-  
-  pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.setFontSize(11);
-  pdf.setFont("helvetica", "bold");
+  // Document type on right
+  pdf.setFontSize(14);
   const typeMap: Record<string, Record<string, string>> = {
     vente: { DV: "DEVIS", BC: "BON DE COMMANDE", BL: "BON DE LIVRAISON", BR: "BON DE RETOUR", FA: "FACTURE" },
     achat: { DV: "DEVIS", BC: "BON DE COMMANDE", BL: "BON DE RÉCEPTION", BR: "BON DE RETOUR", FA: "FACTURE" },
   };
-  pdf.text(typeMap[doc.mode][doc.type], 167, 24, { align: "center" });
+  pdf.text(typeMap[doc.mode][doc.type], pageWidth - 15, currentY + 8, { align: "right" });
+
+  // Separator line below header
+  currentY = 35;
+  pdf.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  pdf.setLineWidth(0.5);
+  pdf.line(12, currentY, pageWidth - 12, currentY);
+
+  // ============ INFO BOXES SECTION ============
+  currentY = 42;
+  const boxWidth = 88;
+  const boxHeight = 25;
   
-  pdf.setFontSize(9);
-  pdf.setFont("helvetica", "normal");
-  pdf.setTextColor(60, 60, 60);
-  pdf.text(`N° ${doc.code}`, 167, 31, { align: "center" });
-
-  // Reset text color
-  pdf.setTextColor(0, 0, 0);
-
-  // ============ DOCUMENT INFO SECTION ============
-  currentY = 45;
-
-  // Date and reference box
+  // Left box - INFORMATIONS DOCUMENT
   pdf.setFillColor(245, 247, 250);
-  pdf.rect(15, currentY, 85, 25, 'F');
+  pdf.rect(12, currentY, boxWidth, boxHeight, 'F');
   pdf.setDrawColor(200, 200, 200);
-  pdf.rect(15, currentY, 85, 25);
+  pdf.setLineWidth(0.3);
+  pdf.rect(12, currentY, boxWidth, boxHeight, 'S');
 
   pdf.setFontSize(9);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.text("INFORMATIONS DOCUMENT", 20, currentY + 6);
+  pdf.text("INFORMATIONS DOCUMENT", 16, currentY + 7);
   
   pdf.setTextColor(60, 60, 60);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(9);
-  pdf.text(`Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}`, 20, currentY + 13);
+  pdf.text(`Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}`, 16, currentY + 15);
 
-  // Client info box
+  // Right box - CLIENT/FOURNISSEUR
   pdf.setFillColor(245, 247, 250);
-  pdf.rect(110, currentY, 85, 25, 'F');
+  pdf.rect(pageWidth - 12 - boxWidth, currentY, boxWidth, boxHeight, 'F');
   pdf.setDrawColor(200, 200, 200);
-  pdf.rect(110, currentY, 85, 25);
+  pdf.rect(pageWidth - 12 - boxWidth, currentY, boxWidth, boxHeight, 'S');
 
   pdf.setFontSize(9);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.text(doc.mode === "vente" ? "CLIENT" : "FOURNISSEUR", 115, currentY + 6);
+  pdf.text(doc.mode === "vente" ? "CLIENT" : "FOURNISSEUR", pageWidth - 8 - boxWidth, currentY + 7);
   
   pdf.setTextColor(60, 60, 60);
   pdf.setFont("helvetica", "normal");
-  pdf.text(clientName, 115, currentY + 13);
+  pdf.text(clientName, pageWidth - 8 - boxWidth, currentY + 15);
   if (client?.address) {
-    const addressLines = client.address.length > 35 
-      ? [client.address.substring(0, 35), client.address.substring(35, 70)]
-      : [client.address];
-    addressLines.forEach((line, i) => {
-      pdf.setFontSize(8);
-      pdf.text(line, 115, currentY + 18 + (i * 4));
-    });
+    pdf.setFontSize(8);
+    const addr = client.address.length > 40 ? client.address.substring(0, 40) + "..." : client.address;
+    pdf.text(addr, pageWidth - 8 - boxWidth, currentY + 21);
   }
 
   // ============ PRODUCTS TABLE ============
-  currentY = 80;
+  currentY = 75;
 
-  // Price entered is TTC, calculate HT by subtracting 20%
-  const TVA_RATE = 0.20;
-  
+  // Calculate HT price: HT = TTC / 1.2
   const body = doc.lines.map((l, idx) => {
     const p = products.find((pr) => pr.id === l.productId);
     const priceTTC = l.unitPrice;
-    const priceHT = priceTTC * (1 - TVA_RATE); // HT = TTC - 20%
+    const priceHT = priceTTC / 1.2; // HT = TTC / 1.2
     const remise = l.remiseAmount;
     const qty = l.qty;
     const totalLineHT = (priceHT - remise) * qty;
@@ -197,7 +165,6 @@ export function generateDocumentPdf(doc: Document) {
     
     return [
       idx + 1,
-      ref,
       designation,
       qty,
       priceHT.toFixed(2) + " MAD",
@@ -207,7 +174,7 @@ export function generateDocumentPdf(doc: Document) {
   });
 
   autoTable(pdf, {
-    head: [["N°", "Réf.", "Désignation", "Qté", "P.U. H.T", "Remise", "Montant H.T"]],
+    head: [["N° Réf.", "Désignation", "QTE", "P.U.H.T", "Remise", "Total H.T"]],
     body,
     startY: currentY,
     styles: { 
@@ -224,117 +191,107 @@ export function generateDocumentPdf(doc: Document) {
       halign: 'center',
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 10 },
-      1: { halign: 'center', cellWidth: 20 },
-      2: { halign: 'left', cellWidth: 50 },
-      3: { halign: 'center', cellWidth: 12 },
-      4: { halign: 'right', cellWidth: 30 },
-      5: { halign: 'right', cellWidth: 25 },
-      6: { halign: 'right', cellWidth: 34 },
+      0: { halign: 'center', cellWidth: 18 },
+      1: { halign: 'left', cellWidth: 65 },
+      2: { halign: 'center', cellWidth: 15 },
+      3: { halign: 'right', cellWidth: 30 },
+      4: { halign: 'right', cellWidth: 25 },
+      5: { halign: 'right', cellWidth: 32 },
     },
     alternateRowStyles: {
       fillColor: [250, 250, 252],
     },
-    margin: { left: 15, right: 15 },
+    margin: { left: 12, right: 12 },
     theme: 'grid',
   });
 
   // ============ TOTALS SECTION ============
   const tableEndY = (pdf as any).lastAutoTable.finalY || currentY + 50;
   
-  // Calculate totals: HT = TTC - 20%, TVA = 20% of TTC
+  // Calculate totals: HT = TTC / 1.2, TVA = TTC - HT = HT * 0.2
   const totalHT = doc.lines.reduce((s, l) => {
-    const priceHT = l.unitPrice * (1 - TVA_RATE);
+    const priceHT = l.unitPrice / 1.2;
     return s + (priceHT - l.remiseAmount) * l.qty;
   }, 0);
   
-  const totalTVA = doc.lines.reduce((s, l) => {
-    const tvaPerUnit = l.unitPrice * TVA_RATE;
-    return s + tvaPerUnit * l.qty;
-  }, 0);
+  const totalTVA = totalHT * 0.2; // TVA is 20% of HT
   
   const remiseTotal = doc.lines.reduce((s, l) => s + l.remiseAmount * l.qty, 0);
   const includeTVA = doc.includeTVA === true;
   const totalTTC = totalHT + (includeTVA ? totalTVA : 0);
 
-  let totalsY = tableEndY + 8;
-  const totalsX = 125;
-  const totalsWidth = 70;
-  const boxHeight = includeTVA ? 45 : 30;
+  // Amount in words (left side)
+  let leftY = tableEndY + 8;
+  pdf.setFont("helvetica", "italic");
+  pdf.setFontSize(8);
+  pdf.setTextColor(80, 80, 80);
+  pdf.text("Arrêtée la présente facture à la somme de:", 12, leftY);
   
-  // Totals box with styling
-  pdf.setFillColor(245, 247, 250);
-  pdf.roundedRect(totalsX, totalsY - 3, totalsWidth, boxHeight, 2, 2, 'F');
-  pdf.setDrawColor(200, 200, 200);
-  pdf.roundedRect(totalsX, totalsY - 3, totalsWidth, boxHeight, 2, 2);
+  const finalTotal = includeTVA ? totalTTC : totalHT;
+  const amountWords = amountToFrenchWords(finalTotal);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(9);
+  pdf.setTextColor(50, 50, 50);
+  const splitWords = pdf.splitTextToSize(amountWords, 95);
+  pdf.text(splitWords, 12, leftY + 6);
 
+  // Totals box (right side)
+  let totalsY = tableEndY + 5;
+  const totalsX = 120;
+  const totalsWidth = 78;
+  
   pdf.setFontSize(9);
   pdf.setTextColor(60, 60, 60);
   
-  // Total H.T
+  // Total H.T line
   pdf.setFont("helvetica", "normal");
-  pdf.text("Total H.T:", totalsX + 5, totalsY + 5);
-  pdf.text(totalHT.toFixed(2) + " MAD", totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
+  pdf.text("Total H.T:", totalsX, totalsY + 5);
+  pdf.text(totalHT.toFixed(2) + " MAD", totalsX + totalsWidth - 2, totalsY + 5, { align: "right" });
   
   // Remises (if any)
   if (remiseTotal > 0) {
-    totalsY += 7;
-    pdf.text("Remises:", totalsX + 5, totalsY + 5);
-    pdf.text(`-${remiseTotal.toFixed(2)} MAD`, totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
+    totalsY += 6;
+    pdf.text("Remises:", totalsX, totalsY + 5);
+    pdf.text(`-${remiseTotal.toFixed(2)} MAD`, totalsX + totalsWidth - 2, totalsY + 5, { align: "right" });
   }
   
   // TVA - only show if includeTVA is true
   if (includeTVA) {
-    totalsY += 7;
-    pdf.text("TVA 20%:", totalsX + 5, totalsY + 5);
-    pdf.text(totalTVA.toFixed(2) + " MAD", totalsX + totalsWidth - 5, totalsY + 5, { align: "right" });
+    totalsY += 6;
+    pdf.text("TVA 20%:", totalsX, totalsY + 5);
+    pdf.text(totalTVA.toFixed(2) + " MAD", totalsX + totalsWidth - 2, totalsY + 5, { align: "right" });
   }
   
   // Separator line
-  totalsY += 8;
+  totalsY += 10;
   pdf.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   pdf.setLineWidth(0.5);
-  pdf.line(totalsX + 5, totalsY, totalsX + totalsWidth - 5, totalsY);
+  pdf.line(totalsX, totalsY, totalsX + totalsWidth, totalsY);
   
-  // Final Total - always show TTC when TVA included
+  // Final Total
   totalsY += 6;
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(11);
+  pdf.setFontSize(10);
   pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   
-  const finalTotal = includeTVA ? totalTTC : totalHT;
   const totalLabel = includeTVA ? "TOTAL TTC:" : "TOTAL H.T:";
-  pdf.text(totalLabel, totalsX + 5, totalsY + 2);
-  pdf.text(finalTotal.toFixed(2) + " MAD", totalsX + totalsWidth - 5, totalsY + 2, { align: "right" });
-
-  // Amount in words on the left
-  let leftY = tableEndY + 10;
-  pdf.setFont("helvetica", "italic");
-  pdf.setFontSize(8);
-  pdf.setTextColor(80, 80, 80);
-  pdf.text("Arrêtée la présente facture à la somme de:", 15, leftY);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(9);
-  pdf.setTextColor(50, 50, 50);
-  
-  const amountWords = amountToFrenchWords(finalTotal);
-  const splitWords = pdf.splitTextToSize(amountWords, 100);
-  pdf.text(splitWords, 15, leftY + 5);
+  pdf.text(totalLabel, totalsX, totalsY);
+  pdf.text(finalTotal.toFixed(2) + " MAD", totalsX + totalsWidth - 2, totalsY, { align: "right" });
 
   // ============ PAYMENT SECTION ============
   if (doc.type === "FA") {
     const db = getDB();
     const payments = db.payments.filter(p => p.documentId === doc.id);
     
-    let payY = leftY + 20;
+    let payY = Math.max(leftY + 20, totalsY + 15);
     
     // Payment section header
     pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    pdf.rect(15, payY, 90, 6, 'F');
+    pdf.rect(12, payY, 90, 6, 'F');
     pdf.setTextColor(255, 255, 255);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(9);
-    pdf.text("MODE DE PAIEMENT", 20, payY + 4.5);
+    pdf.text("Mode de paiement", 16, payY + 4.5);
     
     payY += 10;
     pdf.setTextColor(50, 50, 50);
@@ -358,7 +315,7 @@ export function generateDocumentPdf(doc: Document) {
       payments.forEach((payment, i) => {
         const method = methodLabels[payment.method] || payment.method;
         const date = new Date(payment.date).toLocaleDateString('fr-FR');
-        pdf.text(`• ${method}: ${fmtMAD(payment.amount)} (${date})`, 18, payY);
+        pdf.text(`• ${method}: ${fmtMAD(payment.amount)} (${date})`, 16, payY);
         payY += 5;
       });
       
@@ -366,13 +323,13 @@ export function generateDocumentPdf(doc: Document) {
       pdf.setFont("helvetica", "bold");
       if (remaining > 0) {
         pdf.setTextColor(200, 50, 50);
-        pdf.text(`Reste à payer: ${fmtMAD(remaining)}`, 18, payY);
+        pdf.text(`Reste à payer: ${fmtMAD(remaining)}`, 16, payY);
       } else {
         pdf.setTextColor(50, 150, 80);
-        pdf.text("PAYÉ INTÉGRALEMENT", 18, payY);
+        pdf.text("PAYÉ INTÉGRALEMENT", 16, payY);
       }
     } else {
-      pdf.text("• En attente de paiement", 18, payY);
+      pdf.text("• En attente de paiement", 16, payY);
     }
   }
 
@@ -381,8 +338,8 @@ export function generateDocumentPdf(doc: Document) {
   
   // Footer separator line
   pdf.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  pdf.setLineWidth(1);
-  pdf.line(15, footerY - 10, 195, footerY - 10);
+  pdf.setLineWidth(0.5);
+  pdf.line(12, footerY - 10, pageWidth - 12, footerY - 10);
   
   pdf.setTextColor(50, 50, 50);
   pdf.setFont("helvetica", "bold");
