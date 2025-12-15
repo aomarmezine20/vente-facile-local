@@ -74,10 +74,9 @@ export async function generateDocumentPdf(doc: Document) {
   const client = doc.clientId ? clients.find((c) => c.id === doc.clientId) : null;
   const clientName = client?.name || doc.vendorName || "-";
 
-  // Colors
+  // Colors matching screenshot
   const tealColor: [number, number, number] = [46, 139, 171]; // #2E8BAB
   const darkColor: [number, number, number] = [51, 51, 51];
-  const greenColor: [number, number, number] = [46, 139, 87];
   const redColor: [number, number, number] = [180, 40, 40];
   const lightTeal: [number, number, number] = [230, 244, 248];
 
@@ -87,28 +86,45 @@ export async function generateDocumentPdf(doc: Document) {
     achat: { DV: "DEVIS", BC: "BON DE COMMANDE", BL: "BON DE RECEPTION", BR: "BON DE RETOUR", FA: "FACTURE" },
   };
 
+  const includeTVA = doc.includeTVA === true;
+
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
   // ========== HEADER ==========
-  // Logo placeholder (left side)
-  pdf.setDrawColor(...tealColor);
-  pdf.setLineWidth(0.5);
-  pdf.rect(15, 12, 25, 20);
-  pdf.setFontSize(8);
-  pdf.setTextColor(...tealColor);
-  pdf.text("SMART", 20, 20);
-  pdf.setFontSize(7);
-  pdf.text("EXIT", 20, 25);
-  pdf.setFontSize(5);
-  pdf.text("be open be smart", 17, 29);
+  // Logo (left side) - use company logo if available
+  if (company?.logoDataUrl) {
+    try {
+      pdf.addImage(company.logoDataUrl, 'JPEG', 15, 10, 25, 25);
+    } catch (e) {
+      // Fallback to text logo
+      pdf.setDrawColor(...tealColor);
+      pdf.setLineWidth(0.5);
+      pdf.rect(15, 12, 25, 20);
+      pdf.setFontSize(8);
+      pdf.setTextColor(...tealColor);
+      pdf.text("LOGO", 27.5, 23, { align: "center" });
+    }
+  } else {
+    // Default text logo placeholder
+    pdf.setDrawColor(...tealColor);
+    pdf.setLineWidth(0.5);
+    pdf.rect(15, 12, 25, 20);
+    pdf.setFontSize(8);
+    pdf.setTextColor(...tealColor);
+    pdf.text("SMART", 20, 20);
+    pdf.setFontSize(7);
+    pdf.text("EXIT", 20, 25);
+    pdf.setFontSize(5);
+    pdf.text("be open be smart", 17, 29);
+  }
 
   // Company name and address
   pdf.setFontSize(18);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...darkColor);
-  pdf.text("SMART EXIT", 45, 20);
+  pdf.text(company?.name || "SMART EXIT", 45, 20);
   pdf.setFontSize(9);
   pdf.setFont("helvetica", "normal");
   pdf.text(company?.address || "14 RUE EL HATIMI RIVIERA, CASABLANCA", 45, 27);
@@ -160,11 +176,13 @@ export async function generateDocumentPdf(doc: Document) {
   // ========== TABLE ==========
   const tableY = infoY + 35;
 
-  // Calculate totals for table
+  // Calculate table data - when TVA is OFF, unitPrice IS the HT price directly
   const tableData = doc.lines.map((l, idx) => {
     const p = products.find((pr) => pr.id === l.productId);
-    const priceTTC = l.unitPrice;
-    const priceHT = priceTTC / 1.2;
+    
+    // When TVA is included, unitPrice is TTC so we calculate HT = TTC / 1.2
+    // When TVA is NOT included, unitPrice IS already HT
+    const priceHT = includeTVA ? l.unitPrice / 1.2 : l.unitPrice;
     const remise = l.remiseAmount;
     const qty = l.qty;
     const totalLineHT = (priceHT - remise) * qty;
@@ -222,16 +240,15 @@ export async function generateDocumentPdf(doc: Document) {
   // @ts-ignore
   const finalY = pdf.lastAutoTable.finalY + 10;
 
-  // Calculate totals
+  // Calculate totals - same logic as table
   const totalHT = doc.lines.reduce((s, l) => {
-    const priceHT = l.unitPrice / 1.2;
+    const priceHT = includeTVA ? l.unitPrice / 1.2 : l.unitPrice;
     return s + (priceHT - l.remiseAmount) * l.qty;
   }, 0);
   
-  const totalTVA = totalHT * 0.2;
+  const totalTVA = includeTVA ? totalHT * 0.2 : 0;
   const remiseTotal = doc.lines.reduce((s, l) => s + l.remiseAmount * l.qty, 0);
   const totalTTC = totalHT + totalTVA;
-  const includeTVA = doc.includeTVA === true;
   const finalTotal = includeTVA ? totalTTC : totalHT;
 
   // ========== AMOUNT IN WORDS (Left) ==========
@@ -254,7 +271,7 @@ export async function generateDocumentPdf(doc: Document) {
   // Box border
   pdf.setDrawColor(...tealColor);
   pdf.setLineWidth(0.5);
-  pdf.rect(totX, totY, totWidth, includeTVA ? 45 : 35);
+  pdf.rect(totX, totY, totWidth, includeTVA ? 45 : 30);
 
   let currentTotY = totY + 8;
 
@@ -269,11 +286,13 @@ export async function generateDocumentPdf(doc: Document) {
   // Remises
   if (remiseTotal > 0) {
     pdf.text("Remises:", totX + 5, currentTotY);
+    pdf.setTextColor(...redColor);
     pdf.text("-" + formatMAD(remiseTotal), totX + totWidth - 5, currentTotY, { align: "right" });
+    pdf.setTextColor(...darkColor);
     currentTotY += 8;
   }
 
-  // TVA
+  // TVA (only if included)
   if (includeTVA) {
     pdf.text("TVA 20%:", totX + 5, currentTotY);
     pdf.text(formatMAD(totalTVA), totX + totWidth - 5, currentTotY, { align: "right" });
@@ -283,8 +302,8 @@ export async function generateDocumentPdf(doc: Document) {
   // Line before total
   pdf.setDrawColor(...tealColor);
   pdf.setLineWidth(1);
-  pdf.line(totX + 3, currentTotY, totX + totWidth - 3, currentTotY);
-  currentTotY += 7;
+  pdf.line(totX + 3, currentTotY - 2, totX + totWidth - 3, currentTotY - 2);
+  currentTotY += 5;
 
   // TOTAL line
   pdf.setFont("helvetica", "bold");
@@ -351,7 +370,7 @@ export async function generateDocumentPdf(doc: Document) {
   pdf.setLineWidth(0.5);
   pdf.line(15, footerY, pageWidth - 15, footerY);
   
-  // Footer text
+  // Footer text - use company info from settings
   pdf.setFontSize(8);
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(...darkColor);
