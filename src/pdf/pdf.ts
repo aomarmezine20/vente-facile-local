@@ -90,6 +90,10 @@ export async function generateDocumentPdf(doc: Document) {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
+  // ========== TINY BLUE RECTANGLE AT TOP ==========
+  pdf.setFillColor(...primaryColor);
+  pdf.rect(0, 0, pageWidth, 4, "F");
+
   // ========== HEADER SECTION ==========
   // Company logo area
   if (company?.logoDataUrl) {
@@ -376,25 +380,25 @@ export async function generateDocumentPdf(doc: Document) {
   }
 
   // ========== FOOTER ==========
-  const footerY = pageHeight - 25;
+  const footerY = pageHeight - 28;
   
   // Footer line
   pdf.setFillColor(...primaryColor);
-  pdf.rect(15, footerY, pageWidth - 30, 1, "F");
+  pdf.rect(15, footerY, pageWidth - 30, 1.5, "F");
   
-  // Footer text
-  pdf.setFontSize(7);
-  pdf.setFont("helvetica", "normal");
-  pdf.setTextColor(107, 114, 128);
+  // Footer text - BOLD and bigger
+  pdf.setFontSize(8);
+  pdf.setFont("helvetica", "bold");
+  pdf.setTextColor(...secondaryColor);
   
   const footerLine1 = "S.A.R.L au capital de 200.000,00 DH";
   const footerLine2 = "Siege: " + (company?.address || "14 RUE EL HATIMI RIVIERA, CASABLANCA");
   const footerLine3 = "Tel: " + (company?.phone || "+212 522995252") + " | Email: " + (company?.email || "contact.smartexit@gmail.com");
   const footerLine4 = "RC: 487155 | IF: 48541278 | TP: 32252429 | ICE: 002726225000084";
   
-  pdf.text(footerLine1 + " • " + footerLine2, pageWidth / 2, footerY + 6, { align: "center" });
-  pdf.text(footerLine3, pageWidth / 2, footerY + 11, { align: "center" });
-  pdf.text(footerLine4, pageWidth / 2, footerY + 16, { align: "center" });
+  pdf.text(footerLine1 + " • " + footerLine2, pageWidth / 2, footerY + 7, { align: "center" });
+  pdf.text(footerLine3, pageWidth / 2, footerY + 13, { align: "center" });
+  pdf.text(footerLine4, pageWidth / 2, footerY + 19, { align: "center" });
 
   pdf.save(doc.code + ".pdf");
 }
