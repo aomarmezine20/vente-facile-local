@@ -73,8 +73,8 @@ export async function generateDocumentPdf(doc: Document) {
   const client = doc.clientId ? clients.find((c) => c.id === doc.clientId) : null;
   const clientName = client?.name || doc.vendorName || "-";
 
-  // Professional color palette
-  const primaryColor: [number, number, number] = [41, 98, 150]; // Deep blue
+  // Colors matching screenshot - teal/cyan theme
+  const primaryColor: [number, number, number] = [46, 139, 171]; // Teal #2E8BAB
   const secondaryColor: [number, number, number] = [55, 65, 81]; // Dark gray
   const accentColor: [number, number, number] = [16, 185, 129]; // Green accent
   const lightBg: [number, number, number] = [249, 250, 251]; // Light gray bg
@@ -215,12 +215,12 @@ export async function generateDocumentPdf(doc: Document) {
 
   autoTable(pdf, {
     startY: tableY,
-    head: [["#", "Réf.", "Désignation", "Qté", "Prix U. HT", "Remise", "Total HT"]],
+    head: [["N°", "Réf.", "Désignation", "QTE", "P.U.H.T", "Remise", "Total H.T"]],
     body: tableData,
     theme: "grid",
     headStyles: {
-      fillColor: [240, 248, 255],
-      textColor: primaryColor,
+      fillColor: primaryColor,
+      textColor: [255, 255, 255],
       fontStyle: "bold",
       fontSize: 9,
       halign: "center",
