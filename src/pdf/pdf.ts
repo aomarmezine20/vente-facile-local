@@ -90,10 +90,6 @@ export async function generateDocumentPdf(doc: Document) {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
-  // ========== TINY BLUE RECTANGLE AT TOP ==========
-  pdf.setFillColor(...primaryColor);
-  pdf.rect(0, 0, pageWidth, 4, "F");
-
   // ========== HEADER SECTION ==========
   // Company logo area
   if (company?.logoDataUrl) {
@@ -131,13 +127,14 @@ export async function generateDocumentPdf(doc: Document) {
   pdf.text("Tel: " + (company?.phone || "+212 522995252"), 50, 33);
   pdf.text("Email: " + (company?.email || "contact.smartexit@gmail.com"), 50, 39);
 
-  // Document type badge (top right)
+  // Document type box (top right) - empty rectangle with border
   const docType = typeMap[doc.mode][doc.type];
-  pdf.setFillColor(...primaryColor);
-  pdf.roundedRect(140, 12, 55, 18, 2, 2, "F");
+  pdf.setDrawColor(...primaryColor);
+  pdf.setLineWidth(0.8);
+  pdf.roundedRect(140, 12, 55, 18, 2, 2, "S");
   pdf.setFontSize(14);
   pdf.setFont("helvetica", "bold");
-  pdf.setTextColor(255, 255, 255);
+  pdf.setTextColor(...primaryColor);
   pdf.text(docType, 167.5, 23, { align: "center" });
 
   // Document number
