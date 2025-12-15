@@ -90,6 +90,11 @@ export async function generateDocumentPdf(doc: Document) {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
+  // ========== TOP DECORATIVE BORDER (like image) ==========
+  pdf.setDrawColor(...primaryColor);
+  pdf.setLineWidth(0.5);
+  pdf.rect(10, 8, pageWidth - 20, 38);
+
   // ========== HEADER SECTION ==========
   // Company logo area
   if (company?.logoDataUrl) {
@@ -212,14 +217,16 @@ export async function generateDocumentPdf(doc: Document) {
     startY: tableY,
     head: [["#", "Réf.", "Désignation", "Qté", "Prix U. HT", "Remise", "Total HT"]],
     body: tableData,
-    theme: "striped",
+    theme: "grid",
     headStyles: {
-      fillColor: primaryColor,
-      textColor: [255, 255, 255],
+      fillColor: [240, 248, 255],
+      textColor: primaryColor,
       fontStyle: "bold",
       fontSize: 9,
       halign: "center",
-      cellPadding: 4
+      cellPadding: 4,
+      lineColor: primaryColor,
+      lineWidth: 0.3
     },
     bodyStyles: {
       fontSize: 9,
@@ -227,7 +234,7 @@ export async function generateDocumentPdf(doc: Document) {
       cellPadding: 4
     },
     alternateRowStyles: {
-      fillColor: [249, 250, 251]
+      fillColor: [255, 255, 255]
     },
     columnStyles: {
       0: { halign: "center", cellWidth: 10 },
@@ -277,9 +284,10 @@ export async function generateDocumentPdf(doc: Document) {
   const totY = finalY - 8;
   const totWidth = 70;
 
-  // Background
-  pdf.setFillColor(...lightBg);
-  pdf.roundedRect(totX, totY, totWidth, includeTVA ? 48 : 35, 2, 2, "F");
+  // Box outline only (not filled)
+  pdf.setDrawColor(...primaryColor);
+  pdf.setLineWidth(0.5);
+  pdf.roundedRect(totX, totY, totWidth, includeTVA ? 48 : 35, 2, 2, "S");
 
   let currentY = totY + 10;
 
