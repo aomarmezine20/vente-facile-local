@@ -73,8 +73,8 @@ export async function generateDocumentPdf(doc: Document) {
   const client = doc.clientId ? clients.find((c) => c.id === doc.clientId) : null;
   const clientName = client?.name || doc.vendorName || "-";
 
-  // Exact colors from the image
-  const teal: [number, number, number] = [46, 139, 171]; // #2E8BAB
+  // Royal blue corporate color
+  const teal: [number, number, number] = [46, 80, 144]; // #2E5090
   const darkGray: [number, number, number] = [51, 51, 51];
   const grayText: [number, number, number] = [100, 100, 100];
 
