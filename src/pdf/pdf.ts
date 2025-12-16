@@ -143,11 +143,7 @@ export async function generateDocumentPdf(doc: Document) {
   pdf.setTextColor(...grayText);
   pdf.text(company?.address || "14 RUE EL HATIMI RIVIERA, CASABLANCA", 48, 32);
 
-  // ========== DOCUMENT TYPE BOX (right, rounded) ==========
-  pdf.setDrawColor(...teal);
-  pdf.setLineWidth(0.3);
-  pdf.roundedRect(150, 12, 45, 20, 2, 2, 'S');
-
+  // ========== DOCUMENT TYPE (right, just text no box) ==========
   pdf.setFontSize(14);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...darkGray);
@@ -169,17 +165,19 @@ export async function generateDocumentPdf(doc: Document) {
   // CLIENT header (just blue text, no box)
   pdf.text("CLIENT", 152, infoY + 5.5, { align: "center" });
 
-  // Date box (rounded)
+  // Date box (rounded with gray fill)
+  pdf.setFillColor(...lightGray);
   pdf.setDrawColor(...teal);
   pdf.setLineWidth(0.3);
-  pdf.roundedRect(12, infoY + 10, 90, 16, 2, 2, 'S');
+  pdf.roundedRect(12, infoY + 10, 90, 16, 2, 2, 'FD');
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(...darkGray);
   pdf.text("Date: " + new Date(doc.date).toLocaleDateString('fr-FR'), 18, infoY + 20);
 
-  // Client box (rounded)
-  pdf.roundedRect(107, infoY + 10, 90, 16, 2, 2, 'S');
+  // Client box (rounded with gray fill)
+  pdf.setFillColor(...lightGray);
+  pdf.roundedRect(107, infoY + 10, 90, 16, 2, 2, 'FD');
   pdf.setFont("helvetica", "bold");
   pdf.text(clientName.substring(0, 35), 152, infoY + 20, { align: "center" });
 
@@ -230,13 +228,13 @@ export async function generateDocumentPdf(doc: Document) {
       fillColor: lightGray // Gray for alternate rows
     },
     columnStyles: {
-      0: { halign: "center", cellWidth: 12 },
-      1: { halign: "center", cellWidth: 22 },
-      2: { halign: "left", cellWidth: 55 },
-      3: { halign: "center", cellWidth: 15 },
-      4: { halign: "right", cellWidth: 28 },
-      5: { halign: "center", cellWidth: 25 },
-      6: { halign: "right", cellWidth: 28 }
+      0: { halign: "center", cellWidth: 14, overflow: 'visible' },
+      1: { halign: "center", cellWidth: 22, overflow: 'visible' },
+      2: { halign: "left", cellWidth: 50 },
+      3: { halign: "center", cellWidth: 16, overflow: 'visible' },
+      4: { halign: "right", cellWidth: 30, overflow: 'visible' },
+      5: { halign: "center", cellWidth: 26, overflow: 'visible' },
+      6: { halign: "right", cellWidth: 30, overflow: 'visible' }
     },
     styles: {
       lineColor: grayBorder, // Gray border
