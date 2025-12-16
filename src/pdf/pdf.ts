@@ -89,20 +89,20 @@ export async function generateDocumentPdf(doc: Document) {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
-  // ========== HEADER BORDER BOX ==========
+  // ========== HEADER BORDER BOX (rounded) ==========
   pdf.setDrawColor(...teal);
   pdf.setLineWidth(0.4);
-  pdf.rect(12, 8, pageWidth - 24, 40);
+  pdf.roundedRect(12, 8, pageWidth - 24, 40, 3, 3, 'S');
 
   // ========== LOGO (left) ==========
   if (company?.logoDataUrl) {
     try {
       pdf.addImage(company.logoDataUrl, 'JPEG', 16, 12, 28, 32);
     } catch (e) {
-      // Fallback logo box
+      // Fallback logo box (rounded)
       pdf.setDrawColor(...teal);
       pdf.setLineWidth(0.3);
-      pdf.rect(16, 12, 28, 32);
+      pdf.roundedRect(16, 12, 28, 32, 2, 2, 'S');
       pdf.setFontSize(9);
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(...teal);
@@ -115,10 +115,10 @@ export async function generateDocumentPdf(doc: Document) {
       pdf.text("be open be smart", 19, 38);
     }
   } else {
-    // Default logo placeholder
+    // Default logo placeholder (rounded)
     pdf.setDrawColor(...teal);
     pdf.setLineWidth(0.3);
-    pdf.rect(16, 12, 28, 32);
+    pdf.roundedRect(16, 12, 28, 32, 2, 2, 'S');
     pdf.setFontSize(9);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(...teal);
@@ -142,10 +142,10 @@ export async function generateDocumentPdf(doc: Document) {
   pdf.setTextColor(...grayText);
   pdf.text(company?.address || "14 RUE EL HATIMI RIVIERA, CASABLANCA", 48, 32);
 
-  // ========== DOCUMENT TYPE BOX (right) ==========
+  // ========== DOCUMENT TYPE BOX (right, rounded) ==========
   pdf.setDrawColor(...teal);
   pdf.setLineWidth(0.3);
-  pdf.rect(150, 12, 45, 20);
+  pdf.roundedRect(150, 12, 45, 20, 2, 2, 'S');
 
   pdf.setFontSize(14);
   pdf.setFont("helvetica", "bold");
@@ -159,29 +159,29 @@ export async function generateDocumentPdf(doc: Document) {
   // ========== INFO SECTIONS ==========
   const infoY = 55;
 
-  // INFORMATIONS DOCUMENT header
+  // INFORMATIONS DOCUMENT header (rounded top)
   pdf.setFillColor(...teal);
-  pdf.rect(12, infoY, 90, 8, "F");
+  pdf.roundedRect(12, infoY, 90, 8, 2, 2, "F");
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(255, 255, 255);
   pdf.text("INFORMATIONS DOCUMENT", 57, infoY + 5.5, { align: "center" });
 
-  // CLIENT header
-  pdf.rect(107, infoY, 90, 8, "F");
+  // CLIENT header (rounded top)
+  pdf.roundedRect(107, infoY, 90, 8, 2, 2, "F");
   pdf.text("CLIENT", 152, infoY + 5.5, { align: "center" });
 
-  // Date box
+  // Date box (rounded)
   pdf.setDrawColor(...teal);
   pdf.setLineWidth(0.3);
-  pdf.rect(12, infoY + 10, 90, 16);
+  pdf.roundedRect(12, infoY + 10, 90, 16, 2, 2, 'S');
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(...darkGray);
   pdf.text("Date: " + new Date(doc.date).toLocaleDateString('fr-FR'), 18, infoY + 20);
 
-  // Client box
-  pdf.rect(107, infoY + 10, 90, 16);
+  // Client box (rounded)
+  pdf.roundedRect(107, infoY + 10, 90, 16, 2, 2, 'S');
   pdf.setFont("helvetica", "bold");
   pdf.text(clientName.substring(0, 35), 152, infoY + 20, { align: "center" });
 
@@ -271,15 +271,20 @@ export async function generateDocumentPdf(doc: Document) {
   const wordLines = pdf.splitTextToSize(words, 85);
   pdf.text(wordLines, 12, finalY + 6);
 
-  // ========== TOTALS BOX (right) ==========
+  // ========== TOTALS BOX (right, rounded with gray fill) ==========
   const totX = 130;
   const totY = finalY - 5;
   const totWidth = 67;
+  const totHeight = includeTVA ? 42 : 32;
 
-  // Box border only
+  // Gray fill first
+  pdf.setFillColor(...lightGray);
+  pdf.roundedRect(totX, totY, totWidth, totHeight, 3, 3, 'F');
+  
+  // Blue border
   pdf.setDrawColor(...teal);
   pdf.setLineWidth(0.4);
-  pdf.rect(totX, totY, totWidth, includeTVA ? 42 : 32);
+  pdf.roundedRect(totX, totY, totWidth, totHeight, 3, 3, 'S');
 
   let currentY = totY + 9;
 
@@ -326,10 +331,10 @@ export async function generateDocumentPdf(doc: Document) {
     const payments = db.payments.filter(p => p.documentId === doc.id);
     const payY = finalY + 18;
 
-    // Mode de paiement box
+    // Mode de paiement box (rounded)
     pdf.setDrawColor(...teal);
     pdf.setLineWidth(0.3);
-    pdf.rect(12, payY, 70, 10);
+    pdf.roundedRect(12, payY, 70, 10, 2, 2, 'S');
     pdf.setFontSize(10);
     pdf.setFont("helvetica", "normal");
     pdf.setTextColor(...darkGray);
@@ -371,22 +376,23 @@ export async function generateDocumentPdf(doc: Document) {
     }
   }
 
-  // ========== FOOTER ==========
-  const footerY = pageHeight - 32;
+  // ========== FOOTER (at bottom of page) ==========
+  const footerY = pageHeight - 20;
 
   // Footer line
   pdf.setDrawColor(...teal);
-  pdf.setLineWidth(0.6);
+  pdf.setLineWidth(0.5);
   pdf.line(12, footerY, pageWidth - 12, footerY);
 
-  // Footer text - bigger and bold
-  pdf.setFontSize(10);
+  // Footer text - first line bold, others normal, smaller
+  pdf.setFontSize(8);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...darkGray);
+  pdf.text("S.A.R.L au capital de 200.000,00 DH • Siege: " + (company?.address || "14 RUE EL HATIMI RIVIERA,CASABLANCA"), pageWidth / 2, footerY + 4, { align: "center" });
 
-  pdf.text("S.A.R.L au capital de 200.000,00 DH • Siege: " + (company?.address || "14 RUE EL HATIMI RIVIERA,CASABLANCA"), pageWidth / 2, footerY + 7, { align: "center" });
-  pdf.text("Tel: " + (company?.phone || "+212 522995252") + " | Email: " + (company?.email || "contact.smartexit@gmail.com"), pageWidth / 2, footerY + 14, { align: "center" });
-  pdf.text("RC: 487155 | IF: 48541278 | TP: 32252429 | ICE: 002726225000084", pageWidth / 2, footerY + 21, { align: "center" });
+  pdf.setFont("helvetica", "normal");
+  pdf.text("Tel: " + (company?.phone || "+212 522995252") + " | Email: " + (company?.email || "contact.smartexit@gmail.com"), pageWidth / 2, footerY + 9, { align: "center" });
+  pdf.text("RC: 487155 | IF: 48541278 | TP: 32252429 | ICE: 002726225000084", pageWidth / 2, footerY + 14, { align: "center" });
 
   pdf.save(doc.code + ".pdf");
 }
