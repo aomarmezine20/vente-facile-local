@@ -205,14 +205,16 @@ export async function generateDocumentPdf(doc: Document) {
     ];
   });
 
+  const lightGray: [number, number, number] = [245, 245, 245]; // Light gray for table body
+
   autoTable(pdf, {
     startY: tableY,
     head: [["N°", "Réf.", "Désignation", "QTE", "P.U.H.T", "Remise", "Total H.T"]],
     body: tableData,
     theme: "grid",
     headStyles: {
-      fillColor: teal,
-      textColor: [255, 255, 255],
+      fillColor: [255, 255, 255], // White background for headers
+      textColor: darkGray,
       fontStyle: "bold",
       fontSize: 9,
       halign: "center",
@@ -220,6 +222,7 @@ export async function generateDocumentPdf(doc: Document) {
       cellPadding: 3
     },
     bodyStyles: {
+      fillColor: lightGray, // Gray center for body
       fontSize: 9,
       textColor: darkGray,
       cellPadding: 3,
@@ -235,8 +238,8 @@ export async function generateDocumentPdf(doc: Document) {
       6: { halign: "right", cellWidth: 28 }
     },
     styles: {
-      lineColor: teal,
-      lineWidth: 0.3
+      lineColor: teal, // Blue border only
+      lineWidth: 0.4
     },
     margin: { left: 12, right: 12 }
   });
@@ -369,21 +372,21 @@ export async function generateDocumentPdf(doc: Document) {
   }
 
   // ========== FOOTER ==========
-  const footerY = pageHeight - 28;
+  const footerY = pageHeight - 32;
 
   // Footer line
   pdf.setDrawColor(...teal);
-  pdf.setLineWidth(0.5);
+  pdf.setLineWidth(0.6);
   pdf.line(12, footerY, pageWidth - 12, footerY);
 
-  // Footer text - bold
-  pdf.setFontSize(8);
+  // Footer text - bigger and bold
+  pdf.setFontSize(10);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...darkGray);
 
-  pdf.text("S.A.R.L au capital de 200.000,00 DH • Siege: " + (company?.address || "14 RUE EL HATIMI RIVIERA,CASABLANCA"), pageWidth / 2, footerY + 6, { align: "center" });
-  pdf.text("Tel: " + (company?.phone || "+212 522995252") + " | Email: " + (company?.email || "contact.smartexit@gmail.com"), pageWidth / 2, footerY + 12, { align: "center" });
-  pdf.text("RC: 487155 | IF: 48541278 | TP: 32252429 | ICE: 002726225000084", pageWidth / 2, footerY + 18, { align: "center" });
+  pdf.text("S.A.R.L au capital de 200.000,00 DH • Siege: " + (company?.address || "14 RUE EL HATIMI RIVIERA,CASABLANCA"), pageWidth / 2, footerY + 7, { align: "center" });
+  pdf.text("Tel: " + (company?.phone || "+212 522995252") + " | Email: " + (company?.email || "contact.smartexit@gmail.com"), pageWidth / 2, footerY + 14, { align: "center" });
+  pdf.text("RC: 487155 | IF: 48541278 | TP: 32252429 | ICE: 002726225000084", pageWidth / 2, footerY + 21, { align: "center" });
 
   pdf.save(doc.code + ".pdf");
 }
