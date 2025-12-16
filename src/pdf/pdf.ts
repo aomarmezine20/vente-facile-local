@@ -77,6 +77,7 @@ export async function generateDocumentPdf(doc: Document) {
   const teal: [number, number, number] = [46, 80, 144]; // #2E5090
   const darkGray: [number, number, number] = [51, 51, 51];
   const grayText: [number, number, number] = [100, 100, 100];
+  const lightGray: [number, number, number] = [245, 245, 245]; // Light gray for backgrounds
 
   const typeMap: Record<string, Record<string, string>> = {
     vente: { DV: "DEVIS", BC: "BON DE COMMANDE", BL: "BON DE LIVRAISON", BR: "BON DE RETOUR", FA: "FACTURE" },
@@ -159,16 +160,22 @@ export async function generateDocumentPdf(doc: Document) {
   // ========== INFO SECTIONS ==========
   const infoY = 55;
 
-  // INFORMATIONS DOCUMENT header (rounded top)
-  pdf.setFillColor(...teal);
+  // INFORMATIONS DOCUMENT header (rounded, gray fill with blue text)
+  pdf.setFillColor(...lightGray);
   pdf.roundedRect(12, infoY, 90, 8, 2, 2, "F");
+  pdf.setDrawColor(...teal);
+  pdf.roundedRect(12, infoY, 90, 8, 2, 2, "S");
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "bold");
-  pdf.setTextColor(255, 255, 255);
+  pdf.setTextColor(...teal);
   pdf.text("INFORMATIONS DOCUMENT", 57, infoY + 5.5, { align: "center" });
 
-  // CLIENT header (rounded top)
+  // CLIENT header (rounded, gray fill with blue text)
+  pdf.setFillColor(...lightGray);
   pdf.roundedRect(107, infoY, 90, 8, 2, 2, "F");
+  pdf.setDrawColor(...teal);
+  pdf.roundedRect(107, infoY, 90, 8, 2, 2, "S");
+  pdf.setTextColor(...teal);
   pdf.text("CLIENT", 152, infoY + 5.5, { align: "center" });
 
   // Date box (rounded)
@@ -205,7 +212,6 @@ export async function generateDocumentPdf(doc: Document) {
     ];
   });
 
-  const lightGray: [number, number, number] = [245, 245, 245]; // Light gray for table body
 
   autoTable(pdf, {
     startY: tableY,
@@ -384,8 +390,8 @@ export async function generateDocumentPdf(doc: Document) {
   pdf.setLineWidth(0.5);
   pdf.line(12, footerY, pageWidth - 12, footerY);
 
-  // Footer text - first line bold, others normal, smaller
-  pdf.setFontSize(8);
+  // Footer text - first line bold, others normal, slightly bigger
+  pdf.setFontSize(9);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...darkGray);
   pdf.text("S.A.R.L au capital de 200.000,00 DH • Siege: " + (company?.address || "14 RUE EL HATIMI RIVIERA,CASABLANCA"), pageWidth / 2, footerY + 4, { align: "center" });
