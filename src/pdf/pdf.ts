@@ -204,6 +204,8 @@ export async function generateDocumentPdf(doc: Document) {
   });
 
 
+  const grayBorder: [number, number, number] = [180, 180, 180]; // Gray for borders
+
   autoTable(pdf, {
     startY: tableY,
     head: [["N°", "Réf.", "Désignation", "QTE", "P.U.H.T", "Remise", "Total H.T"]],
@@ -216,14 +218,16 @@ export async function generateDocumentPdf(doc: Document) {
       fontSize: 9,
       halign: "center",
       valign: "middle",
-      cellPadding: 3
+      cellPadding: 5
     },
     bodyStyles: {
-      fillColor: lightGray, // Gray center for body
       fontSize: 9,
       textColor: darkGray,
-      cellPadding: 3,
+      cellPadding: 5,
       valign: "middle"
+    },
+    alternateRowStyles: {
+      fillColor: lightGray // Gray for alternate rows
     },
     columnStyles: {
       0: { halign: "center", cellWidth: 12 },
@@ -235,8 +239,8 @@ export async function generateDocumentPdf(doc: Document) {
       6: { halign: "right", cellWidth: 28 }
     },
     styles: {
-      lineColor: teal, // Blue border only
-      lineWidth: 0.4
+      lineColor: grayBorder, // Gray border
+      lineWidth: 0.15 // Very thin border
     },
     margin: { left: 12, right: 12 }
   });
