@@ -160,22 +160,13 @@ export async function generateDocumentPdf(doc: Document) {
   // ========== INFO SECTIONS ==========
   const infoY = 55;
 
-  // INFORMATIONS DOCUMENT header (rounded, gray fill with blue text)
-  pdf.setFillColor(...lightGray);
-  pdf.roundedRect(12, infoY, 90, 8, 2, 2, "F");
-  pdf.setDrawColor(...teal);
-  pdf.roundedRect(12, infoY, 90, 8, 2, 2, "S");
+  // INFORMATIONS DOCUMENT header (just blue text, no box)
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...teal);
   pdf.text("INFORMATIONS DOCUMENT", 57, infoY + 5.5, { align: "center" });
 
-  // CLIENT header (rounded, gray fill with blue text)
-  pdf.setFillColor(...lightGray);
-  pdf.roundedRect(107, infoY, 90, 8, 2, 2, "F");
-  pdf.setDrawColor(...teal);
-  pdf.roundedRect(107, infoY, 90, 8, 2, 2, "S");
-  pdf.setTextColor(...teal);
+  // CLIENT header (just blue text, no box)
   pdf.text("CLIENT", 152, infoY + 5.5, { align: "center" });
 
   // Date box (rounded)
@@ -193,7 +184,7 @@ export async function generateDocumentPdf(doc: Document) {
   pdf.text(clientName.substring(0, 35), 152, infoY + 20, { align: "center" });
 
   // ========== TABLE ==========
-  const tableY = infoY + 38;
+  const tableY = infoY + 42;
 
   const tableData = doc.lines.map((l, idx) => {
     const p = products.find((pr) => pr.id === l.productId);
