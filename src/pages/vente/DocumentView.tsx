@@ -159,19 +159,25 @@ export default function DocumentView() {
   const clients = getClients();
   const depots = getDepots();
 
-  // Calculate HT from TTC: HT = TTC / 1.2, then apply remise, then TVA on net HT
+  // MANDATORY CALCULATION RULES:
+  // 1) All prices entered are TTC, all remises are TTC
+  // 2) Convert price TTC to HT: HT_initial = TTC / 1.20
+  // 3) Convert remise TTC to HT: Remise_HT = Remise_TTC / 1.20
+  // 4) Apply discount on HT: HT_after_discount = (HT_initial - Remise_HT) * qty
+  // 5) Calculate TVA on net HT: TVA = HT_after_discount * 0.20
+  // 6) Total TTC = HT_after_discount + TVA
   const totalHT = useMemo(
     () => doc?.lines.reduce((s, l) => {
-      const priceHT = l.unitPrice / 1.2;
-      const remise = l.remiseAmount || 0;
-      // TVA applies to (priceHT - remise) * qty
-      return s + (priceHT - remise) * l.qty;
+      const priceHT = l.unitPrice / 1.2; // Convert price TTC to HT
+      const remiseHT = (l.remiseAmount || 0) / 1.2; // Convert remise TTC to HT
+      const lineHT = (priceHT - remiseHT) * l.qty; // Apply discount on HT
+      return s + lineHT;
     }, 0) ?? 0,
     [doc?.lines],
   );
   
   const tvaAmount = totalHT * 0.2; // TVA is 20% of net HT (after remise)
-  const total = doc?.includeTVA ? totalHT + tvaAmount : totalHT;
+  const totalTTC = totalHT + tvaAmount; // Total TTC for payment reference
 
   if (!doc) return <div>Document introuvable.</div>;
 
@@ -182,8 +188,13 @@ export default function DocumentView() {
   const transform = (doc: Document) => {
     const t = nextType(doc.type);
     if (!t || hasBeenTransformed) return;
+    
+    // Get client type for document code
+    const client = doc.clientId ? clients.find(c => c.id === doc.clientId) : null;
+    const clientType = client?.type as "particulier" | "entreprise" | undefined;
+    
     const id = `doc_${Date.now()}`;
-    const code = nextCode(doc.mode, t);
+    const code = nextCode(doc.mode, t, clientType);
     const date = todayISO();
     
     let status: DocumentStatus = "valide";
@@ -218,8 +229,12 @@ export default function DocumentView() {
   };
 
   const createBR = (doc: Document) => {
+    // Get client type for document code
+    const client = doc.clientId ? clients.find(c => c.id === doc.clientId) : null;
+    const clientType = client?.type as "particulier" | "entreprise" | undefined;
+    
     const id = `doc_${Date.now()}`;
-    const code = nextCode(doc.mode, "BR");
+    const code = nextCode(doc.mode, "BR", clientType);
     const date = todayISO();
     const br: Document = { ...doc, id, code, type: "BR", date, status: "valide", refFromId: doc.id };
     upsertDocument(br);
@@ -419,7 +434,7 @@ export default function DocumentView() {
               <div className="text-sm text-muted-foreground">TVA 20%: {fmtMAD(tvaAmount)}</div>
             )}
             <div className="text-lg font-semibold">
-              Total {doc.includeTVA ? "TTC" : "HT"}: {fmtMAD(total)}
+              Total {doc.includeTVA ? "TTC" : "HT"}: {fmtMAD(doc.includeTVA ? totalTTC : totalHT)}
             </div>
           </div>
         </CardContent>

@@ -21,9 +21,15 @@ export function PaymentManager({ document }: PaymentManagerProps) {
   const db = getDB();
   const documentPayments = (db.payments || []).filter(p => p.documentId === document.id);
   const totalPaid = documentPayments.reduce((sum, p) => sum + p.amount, 0);
-  const totalHT = document.lines.reduce((s, l) => s + (l.unitPrice - l.remiseAmount) * l.qty, 0);
-  const tvaAmount = document.includeTVA ? totalHT * 0.2 : 0;
-  const documentTotal = totalHT + tvaAmount;
+  
+  // MANDATORY CALCULATION: Prices and remises are TTC, convert to HT
+  const totalHT = document.lines.reduce((s, l) => {
+    const priceHT = l.unitPrice / 1.2; // Price TTC to HT
+    const remiseHT = (l.remiseAmount || 0) / 1.2; // Remise TTC to HT
+    return s + (priceHT - remiseHT) * l.qty;
+  }, 0);
+  const tvaAmount = totalHT * 0.2; // TVA 20% on net HT
+  const documentTotal = totalHT + tvaAmount; // Total TTC for payment
   const remainingAmount = documentTotal - totalPaid;
 
   const [newPayment, setNewPayment] = useState({

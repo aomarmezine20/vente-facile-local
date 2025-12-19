@@ -41,14 +41,19 @@ export function seedIfNeeded(seedFn: () => AppDB) {
   }
 }
 
-export function nextCode(mode: Mode, type: DocType): string {
-  const key = `${mode}-${type}`;
+export function nextCode(mode: Mode, type: DocType, clientType?: "particulier" | "entreprise"): string {
+  // Include client type in counter key to separate numbering
+  const clientSuffix = clientType === "particulier" ? "P" : clientType === "entreprise" ? "E" : "";
+  const key = clientSuffix ? `${mode}-${type}-${clientSuffix}` : `${mode}-${type}`;
   let code = "";
   setDB((db) => {
     const n = (db.counters[key] ?? 0) + 1;
     db.counters[key] = n;
     const prefix = mode === "vente" ? "V" : "A";
-    code = `${prefix}-${type}-${n.toString().padStart(6, "0")}`;
+    // Format: V-FA-P-000001 or V-FA-E-000001 or V-FA-000001 (if no client type)
+    code = clientSuffix 
+      ? `${prefix}-${type}-${clientSuffix}-${n.toString().padStart(5, "0")}`
+      : `${prefix}-${type}-${n.toString().padStart(6, "0")}`;
   });
   return code;
 }

@@ -193,11 +193,12 @@ export async function generateDocumentPdf(doc: Document) {
   // ========== TABLE ==========
   const tableY = infoY + 50;
 
+  // MANDATORY: All prices and remises are TTC - convert to HT for display
   const tableData = doc.lines.map((l, idx) => {
     const p = products.find((pr) => pr.id === l.productId);
-    const priceHT = includeTVA ? l.unitPrice / 1.2 : l.unitPrice;
-    const remise = l.remiseAmount || 0;
-    const totalLineHT = (priceHT * l.qty) - (remise * l.qty);
+    const priceHT = l.unitPrice / 1.2; // Convert price TTC to HT
+    const remiseHT = (l.remiseAmount || 0) / 1.2; // Convert remise TTC to HT
+    const totalLineHT = (priceHT - remiseHT) * l.qty; // Apply discount on HT
 
     return [
       String(idx + 1),
@@ -205,7 +206,7 @@ export async function generateDocumentPdf(doc: Document) {
       l.description || p?.name || "",
       String(l.qty),
       formatMAD(priceHT),
-      remise > 0 ? formatMAD(remise) : "-",
+      remiseHT > 0 ? formatMAD(remiseHT) : "-",
       formatMAD(totalLineHT)
     ];
   });
@@ -255,14 +256,14 @@ export async function generateDocumentPdf(doc: Document) {
   // @ts-ignore
   const finalY = pdf.lastAutoTable.finalY + 12;
 
-  // Calculate totals
+  // MANDATORY: Calculate totals with TTC->HT conversion
   const totalHT = doc.lines.reduce((s, l) => {
-    const priceHT = includeTVA ? l.unitPrice / 1.2 : l.unitPrice;
-    const remise = l.remiseAmount || 0;
-    return s + (priceHT * l.qty) - (remise * l.qty);
+    const priceHT = l.unitPrice / 1.2; // Convert price TTC to HT
+    const remiseHT = (l.remiseAmount || 0) / 1.2; // Convert remise TTC to HT
+    return s + (priceHT - remiseHT) * l.qty;
   }, 0);
 
-  const remiseTotal = doc.lines.reduce((s, l) => s + (l.remiseAmount || 0) * l.qty, 0);
+  const remiseTotalHT = doc.lines.reduce((s, l) => s + ((l.remiseAmount || 0) / 1.2) * l.qty, 0);
   const totalTVA = includeTVA ? totalHT * 0.2 : 0;
   const finalTotal = includeTVA ? totalHT + totalTVA : totalHT;
 
@@ -305,11 +306,11 @@ export async function generateDocumentPdf(doc: Document) {
   pdf.text(formatMAD(totalHT), totX + totWidth - 5, currentY, { align: "right" });
   currentY += 8;
 
-  // Remises
-  if (remiseTotal > 0) {
-    pdf.text("Remises:", totX + 5, currentY);
+  // Remises (now in HT)
+  if (remiseTotalHT > 0) {
+    pdf.text("Remises H.T:", totX + 5, currentY);
     pdf.setTextColor(180, 40, 40);
-    pdf.text("-" + formatMAD(remiseTotal), totX + totWidth - 5, currentY, { align: "right" });
+    pdf.text("-" + formatMAD(remiseTotalHT), totX + totWidth - 5, currentY, { align: "right" });
     pdf.setTextColor(...darkGray);
     currentY += 8;
   }
