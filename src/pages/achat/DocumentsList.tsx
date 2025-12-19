@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { getDocuments, getClients, getDepots, getDB, nextCode, upsertDocument, adjustStock, deleteDocument, getCurrentUser } from "@/store/localdb";
@@ -9,7 +10,7 @@ import { DocType, Document, DocumentStatus } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
 import { toast } from "@/hooks/use-toast";
-import { Trash2 } from "lucide-react";
+import { Trash2, Calendar } from "lucide-react";
 import { SearchInput } from "@/components/SearchInput";
 
 const typeLabels: Record<DocType, string> = {
@@ -32,12 +33,32 @@ export default function AchatDocumentsList({ type: propType }: { type?: DocType 
   const { type } = useParams<{ type: DocType }>();
   const actualType = (propType as DocType) || (type as DocType) || "DV";
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   
-  const allDocuments = useMemo(() => getDocuments({ mode: "achat", type: actualType }), [actualType, getDB().documents.length]);
-  const documents = allDocuments.filter(doc => 
-    doc.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doc.vendorName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const documents = useMemo(() => {
+    let filtered = getDocuments({ mode: "achat", type: actualType });
+    
+    // Filter by search
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(doc => 
+        doc.code.toLowerCase().includes(term) ||
+        doc.vendorName?.toLowerCase().includes(term)
+      );
+    }
+    
+    // Filter by date
+    if (dateFrom) {
+      filtered = filtered.filter(doc => doc.date >= dateFrom);
+    }
+    if (dateTo) {
+      filtered = filtered.filter(doc => doc.date <= dateTo + "T23:59:59");
+    }
+    
+    // Sort by date descending (recent first)
+    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [actualType, getDB().documents.length, searchTerm, dateFrom, dateTo]);
   
   const clients = getClients();
   const depots = getDepots();
@@ -136,11 +157,44 @@ export default function AchatDocumentsList({ type: propType }: { type?: DocType 
         )}
       </div>
 
-      <SearchInput 
-        value={searchTerm}
-        onChange={setSearchTerm}
-        placeholder="Rechercher par code ou fournisseur..."
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>Recherche & Filtres</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <SearchInput 
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Rechercher par code ou fournisseur..."
+          />
+          <div className="flex gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Du:</span>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-40"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Au:</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-40"
+              />
+            </div>
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+                Effacer
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

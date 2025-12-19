@@ -23,6 +23,7 @@ export default function ClientManager() {
     phone: "",
     address: "",
     taxId: "",
+    ice: "",
     notes: ""
   });
 
@@ -34,6 +35,7 @@ export default function ClientManager() {
       phone: "",
       address: "",
       taxId: "",
+      ice: "",
       notes: ""
     });
     setEditingClient(null);
@@ -54,6 +56,7 @@ export default function ClientManager() {
       phone: formData.phone.trim() || undefined,
       address: formData.address.trim() || undefined,
       taxId: formData.taxId.trim() || undefined,
+      ice: formData.ice.trim() || undefined,
       notes: formData.notes.trim() || undefined,
     };
 
@@ -76,6 +79,7 @@ export default function ClientManager() {
       phone: client.phone || "",
       address: client.address || "",
       taxId: client.taxId || "",
+      ice: client.ice || "",
       notes: client.notes || ""
     });
     setIsOpen(true);
@@ -159,14 +163,27 @@ export default function ClientManager() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="taxId">Identifiant fiscal</Label>
-                <Input
-                  id="taxId"
-                  value={formData.taxId}
-                  onChange={(e) => setFormData(prev => ({ ...prev, taxId: e.target.value }))}
-                  placeholder="ICE, RC, etc."
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="taxId">Identifiant fiscal</Label>
+                  <Input
+                    id="taxId"
+                    value={formData.taxId}
+                    onChange={(e) => setFormData(prev => ({ ...prev, taxId: e.target.value }))}
+                    placeholder="RC, etc."
+                  />
+                </div>
+                {formData.type === "entreprise" && (
+                  <div>
+                    <Label htmlFor="ice">ICE</Label>
+                    <Input
+                      id="ice"
+                      value={formData.ice}
+                      onChange={(e) => setFormData(prev => ({ ...prev, ice: e.target.value }))}
+                      placeholder="ICE de l'entreprise"
+                    />
+                  </div>
+                )}
               </div>
 
               <div>

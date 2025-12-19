@@ -95,8 +95,9 @@ export function PaymentManager({ document }: PaymentManagerProps) {
     switch (method) {
       case "especes": return <Banknote className="h-4 w-4" />;
       case "cheque": return <Receipt className="h-4 w-4" />;
-      case "carte": 
+      case "versement": 
       case "virement": return <CreditCard className="h-4 w-4" />;
+      case "traite": return <Receipt className="h-4 w-4" />;
       case "autre": return <Receipt className="h-4 w-4" />;
     }
   };
@@ -105,8 +106,9 @@ export function PaymentManager({ document }: PaymentManagerProps) {
     switch (method) {
       case "especes": return "Espèces";
       case "cheque": return "Chèque";
-      case "carte": return "Carte";
+      case "versement": return "Versement";
       case "virement": return "Virement";
+      case "traite": return "Traite";
       case "autre": return "Autre";
     }
   };
@@ -191,8 +193,9 @@ export function PaymentManager({ document }: PaymentManagerProps) {
                     <SelectContent>
                       <SelectItem value="especes">Espèces</SelectItem>
                       <SelectItem value="cheque">Chèque</SelectItem>
-                      <SelectItem value="carte">Carte</SelectItem>
+                      <SelectItem value="versement">Versement</SelectItem>
                       <SelectItem value="virement">Virement</SelectItem>
+                      <SelectItem value="traite">Traite</SelectItem>
                       <SelectItem value="autre">Autre</SelectItem>
                     </SelectContent>
                   </Select>
