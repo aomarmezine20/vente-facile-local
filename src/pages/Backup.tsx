@@ -1,59 +1,24 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, Upload, Database } from "lucide-react";
+import { Download, Upload, Database, Server, Laptop } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import JSZip from "jszip";
-import { getDB } from "@/store/localdb";
+import { getDB, isUsingServer } from "@/store/localdb";
+import { downloadBackup as apiDownloadBackup, restoreBackup as apiRestoreBackup } from "@/store/api";
 
 export default function Backup() {
   const { toast } = useToast();
   const [lastBackup, setLastBackup] = useState<string | null>(null);
+  const [serverMode, setServerMode] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("lastBackupDate");
     if (stored) {
       setLastBackup(stored);
     }
-
-    // Check if we should auto-backup (every weekend - Saturday)
-    checkAutoBackup();
+    setServerMode(isUsingServer());
   }, []);
-
-  const checkAutoBackup = () => {
-    const now = new Date();
-    const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
-    const lastBackupStr = localStorage.getItem("lastBackupDate");
-    
-    // If it's Saturday (6)
-    if (dayOfWeek === 6) {
-      if (!lastBackupStr) {
-        // Never backed up before
-        performAutoBackup();
-        return;
-      }
-      
-      const lastBackupDate = new Date(lastBackupStr);
-      const daysSinceBackup = Math.floor((now.getTime() - lastBackupDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      // If last backup was more than 6 days ago
-      if (daysSinceBackup >= 6) {
-        performAutoBackup();
-      }
-    }
-  };
-
-  const performAutoBackup = async () => {
-    try {
-      await downloadBackup();
-      toast({
-        title: "Sauvegarde automatique",
-        description: "Sauvegarde hebdomadaire effectuée avec succès",
-      });
-    } catch (error) {
-      console.error("Auto backup failed:", error);
-    }
-  };
 
   const downloadBackup = async () => {
     try {
@@ -110,7 +75,12 @@ export default function Backup() {
       const newDB = JSON.parse(dbContent);
       
       // Restore to localStorage
-      localStorage.setItem("db", JSON.stringify(newDB));
+      localStorage.setItem("sage-lite-db", JSON.stringify(newDB));
+      
+      // Also restore to server if in server mode
+      if (serverMode) {
+        await apiRestoreBackup(newDB);
+      }
       
       toast({
         title: "Restauration réussie",
@@ -133,6 +103,31 @@ export default function Backup() {
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-8">Sauvegarde & Restauration</h1>
+      
+      {/* Server mode indicator */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            {serverMode ? (
+              <>
+                <Server className="h-5 w-5 text-green-500" />
+                Mode Serveur Actif
+              </>
+            ) : (
+              <>
+                <Laptop className="h-5 w-5 text-yellow-500" />
+                Mode Local
+              </>
+            )}
+          </CardTitle>
+          <CardDescription>
+            {serverMode 
+              ? "Les données sont synchronisées avec le serveur PostgreSQL. Tous les PCs partagent les mêmes données."
+              : "Les données sont stockées localement. Chaque PC a ses propres données."
+            }
+          </CardDescription>
+        </CardHeader>
+      </Card>
       
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -195,15 +190,6 @@ export default function Backup() {
           </CardContent>
         </Card>
       </div>
-
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Sauvegarde automatique</CardTitle>
-          <CardDescription>
-            Une sauvegarde automatique est effectuée chaque samedi
-          </CardDescription>
-        </CardHeader>
-      </Card>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,65 +26,82 @@ import runSeed from "./seed";
 
 const queryClient = new QueryClient();
 
-runSeed();
+const App = () => {
+  const [isReady, setIsReady] = useState(false);
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/*"
-            element={
-              <AppLayout>
-                <Routes>
-                  <Route path="/" element={<Navigate to="/dashboard" />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/reports" element={<Reports />} />
-                  <Route path="/comptabilite" element={<Comptabilite />} />
+  useEffect(() => {
+    runSeed().then(() => setIsReady(true));
+  }, []);
 
-                  {/* Ventes */}
-                  <Route path="/ventes/devis" element={<DocumentsList mode="vente" type="DV" />} />
-                  <Route path="/ventes/devis/nouveau" element={<DocumentForm mode="vente" />} />
-                  <Route path="/ventes/bc" element={<DocumentsList mode="vente" type="BC" />} />
-                  <Route path="/ventes/bl" element={<DocumentsList mode="vente" type="BL" />} />
-                  <Route path="/ventes/br" element={<DocumentsList mode="vente" type="BR" />} />
-                  <Route path="/ventes/factures" element={<DocumentsList mode="vente" type="FA" />} />
+  if (!isReady) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
-                  {/* Achats */}
-                  <Route path="/achats/devis" element={<AchatDocumentsList type="DV" />} />
-                  <Route path="/achats/devis/nouveau" element={<AchatDocumentForm />} />
-                  <Route path="/achats/bc" element={<AchatDocumentsList type="BC" />} />
-                  <Route path="/achats/bl" element={<AchatDocumentsList type="BL" />} />
-                  <Route path="/achats/factures" element={<AchatDocumentsList type="FA" />} />
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/*"
+              element={
+                <AppLayout>
+                  <Routes>
+                    <Route path="/" element={<Navigate to="/dashboard" />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/reports" element={<Reports />} />
+                    <Route path="/comptabilite" element={<Comptabilite />} />
 
-                  {/* Stock management & Products */}
-            <Route path="/stock" element={<StockManager />} />
-            <Route path="/products" element={<ProductsCatalog />} />
-            <Route path="/clients" element={<ClientManager />} />
+                    {/* Ventes */}
+                    <Route path="/ventes/devis" element={<DocumentsList mode="vente" type="DV" />} />
+                    <Route path="/ventes/devis/nouveau" element={<DocumentForm mode="vente" />} />
+                    <Route path="/ventes/bc" element={<DocumentsList mode="vente" type="BC" />} />
+                    <Route path="/ventes/bl" element={<DocumentsList mode="vente" type="BL" />} />
+                    <Route path="/ventes/br" element={<DocumentsList mode="vente" type="BR" />} />
+                    <Route path="/ventes/factures" element={<DocumentsList mode="vente" type="FA" />} />
 
-                  {/* Document detail (commun) */}
-                  <Route path="/document/:id" element={<DocumentView />} />
+                    {/* Achats */}
+                    <Route path="/achats/devis" element={<AchatDocumentsList type="DV" />} />
+                    <Route path="/achats/devis/nouveau" element={<AchatDocumentForm />} />
+                    <Route path="/achats/bc" element={<AchatDocumentsList type="BC" />} />
+                    <Route path="/achats/bl" element={<AchatDocumentsList type="BL" />} />
+                    <Route path="/achats/factures" element={<AchatDocumentsList type="FA" />} />
 
-                  {/* Admin */}
-                  <Route path="/admin" element={<AdminPage />} />
-                  <Route path="/backup" element={<Backup />} />
-                  <Route path="/certificates" element={<CertificateManager />} />
+                    {/* Stock management & Products */}
+                    <Route path="/stock" element={<StockManager />} />
+                    <Route path="/products" element={<ProductsCatalog />} />
+                    <Route path="/clients" element={<ClientManager />} />
 
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </AppLayout>
-            }
-          />
-          {/* Fallbacks */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+                    {/* Document detail (commun) */}
+                    <Route path="/document/:id" element={<DocumentView />} />
+
+                    {/* Admin */}
+                    <Route path="/admin" element={<AdminPage />} />
+                    <Route path="/backup" element={<Backup />} />
+                    <Route path="/certificates" element={<CertificateManager />} />
+
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </AppLayout>
+              }
+            />
+            {/* Fallbacks */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
