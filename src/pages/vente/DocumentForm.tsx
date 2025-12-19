@@ -76,8 +76,12 @@ export default function DocumentForm({ mode }: { mode: Mode }) {
     if (mode === "vente" && !clientId) return toast({ title: "Sélectionnez un client" });
     if (mode === "achat" && !vendorName) return toast({ title: "Saisissez un fournisseur" });
 
+    // Get client type for document code
+    const client = mode === "vente" && clientId ? clients.find(c => c.id === clientId) : null;
+    const clientType = client?.type as "particulier" | "entreprise" | undefined;
+
     const id = `doc_${Date.now()}`;
-    const code = nextCode(mode, "DV");
+    const code = nextCode(mode, "DV", clientType);
     const doc: Document = {
       id,
       code,
