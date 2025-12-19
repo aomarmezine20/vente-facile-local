@@ -4,11 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogHeader } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogHeader, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getProducts, getDepots, getStock, adjustStock, deleteStockItem, getCurrentUser } from "@/store/localdb";
+import { Label } from "@/components/ui/label";
+import { getProducts, getDepots, getStock, adjustStock, deleteStockItem, getCurrentUser, upsertProduct } from "@/store/localdb";
 import { toast } from "@/hooks/use-toast";
-import { Package, AlertTriangle, TrendingUp, Search, Trash2 } from "lucide-react";
+import { Package, AlertTriangle, TrendingUp, Search, Trash2, Edit } from "lucide-react";
+import { Product } from "@/types";
+import { fmtMAD } from "@/utils/format";
 
 export default function StockManager() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -60,6 +63,15 @@ export default function StockManager() {
     toast({ 
       title: "Article supprimé du stock", 
       description: `${product?.name} supprimé du dépôt ${depot?.name}` 
+    });
+    setRefreshKey(k => k + 1);
+  };
+
+  const handleProductUpdate = (product: Product) => {
+    upsertProduct(product);
+    toast({ 
+      title: "Produit modifié", 
+      description: `${product.name} a été mis à jour` 
     });
     setRefreshKey(k => k + 1);
   };
@@ -169,6 +181,7 @@ export default function StockManager() {
                 <TableHead>Photo</TableHead>
                 <TableHead>Référence</TableHead>
                 <TableHead>Désignation</TableHead>
+                <TableHead>Prix TTC</TableHead>
                 <TableHead>Dépôt</TableHead>
                 <TableHead>Quantité</TableHead>
                 <TableHead>Statut</TableHead>
@@ -195,11 +208,11 @@ export default function StockManager() {
                             />
                           </DialogTrigger>
                           <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>{product.name}</DialogTitle>
+                              <DialogDescription>Référence: {product.sku}</DialogDescription>
+                            </DialogHeader>
                             <img src={product.imageDataUrl} alt={product.name} className="w-full h-auto rounded-lg" />
-                            <div className="text-center mt-2">
-                              <h3 className="font-semibold">{product.name}</h3>
-                              <p className="text-sm text-muted-foreground">Référence: {product.sku}</p>
-                            </div>
                           </DialogContent>
                         </Dialog>
                       ) : (
@@ -210,6 +223,7 @@ export default function StockManager() {
                     </TableCell>
                     <TableCell className="font-medium">{product?.sku}</TableCell>
                     <TableCell>{product?.name}</TableCell>
+                    <TableCell>{product ? fmtMAD(product.price) : "-"}</TableCell>
                     <TableCell>{depot?.name}</TableCell>
                     <TableCell className="font-bold text-lg">{s.qty}</TableCell>
                     <TableCell>
@@ -224,6 +238,12 @@ export default function StockManager() {
                         currentStock={s.qty}
                         onAdjust={(delta, reason) => handleStockAdjustment(s.depotId, s.productId, delta, reason)}
                       />
+                      {product && (
+                        <ProductEditDialog 
+                          product={product}
+                          onSave={handleProductUpdate}
+                        />
+                      )}
                       {isAdmin && (
                         <Button 
                           variant="destructive" 
@@ -254,6 +274,7 @@ interface StockAdjustmentDialogProps {
 function StockAdjustmentDialog({ productName, currentStock, onAdjust }: StockAdjustmentDialogProps) {
   const [delta, setDelta] = useState(0);
   const [reason, setReason] = useState("");
+  const [open, setOpen] = useState(false);
 
   const handleSubmit = () => {
     if (delta === 0) {
@@ -269,16 +290,18 @@ function StockAdjustmentDialog({ productName, currentStock, onAdjust }: StockAdj
     onAdjust(delta, reason);
     setDelta(0);
     setReason("");
+    setOpen(false);
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">Ajuster</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Ajustement de stock</DialogTitle>
+          <DialogDescription>Modifier la quantité en stock pour {productName}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>
@@ -288,7 +311,7 @@ function StockAdjustmentDialog({ productName, currentStock, onAdjust }: StockAdj
           </div>
           
           <div>
-            <label className="text-sm font-medium">Quantité à ajouter/retirer</label>
+            <Label>Quantité à ajouter/retirer</Label>
             <Input
               type="number"
               value={delta || ""}
@@ -301,7 +324,7 @@ function StockAdjustmentDialog({ productName, currentStock, onAdjust }: StockAdj
           </div>
 
           <div>
-            <label className="text-sm font-medium">Raison de l'ajustement</label>
+            <Label>Raison de l'ajustement</Label>
             <Select value={reason} onValueChange={setReason}>
               <SelectTrigger>
                 <SelectValue placeholder="Choisir une raison" />
@@ -321,6 +344,121 @@ function StockAdjustmentDialog({ productName, currentStock, onAdjust }: StockAdj
           <div className="flex gap-2">
             <Button onClick={handleSubmit} className="flex-1">
               Confirmer l'ajustement
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface ProductEditDialogProps {
+  product: Product;
+  onSave: (product: Product) => void;
+}
+
+function ProductEditDialog({ product, onSave }: ProductEditDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(product.name);
+  const [sku, setSku] = useState(product.sku);
+  const [price, setPrice] = useState(product.price);
+  const [category, setCategory] = useState(product.category || "");
+
+  const handleOpen = (isOpen: boolean) => {
+    if (isOpen) {
+      // Reset to current product values when opening
+      setName(product.name);
+      setSku(product.sku);
+      setPrice(product.price);
+      setCategory(product.category || "");
+    }
+    setOpen(isOpen);
+  };
+
+  const handleSubmit = () => {
+    if (!name.trim()) {
+      toast({ title: "Erreur", description: "Le nom est obligatoire", variant: "destructive" });
+      return;
+    }
+
+    if (!sku.trim()) {
+      toast({ title: "Erreur", description: "La référence est obligatoire", variant: "destructive" });
+      return;
+    }
+
+    if (price <= 0) {
+      toast({ title: "Erreur", description: "Le prix doit être supérieur à 0", variant: "destructive" });
+      return;
+    }
+
+    onSave({
+      ...product,
+      name: name.trim(),
+      sku: sku.trim(),
+      price,
+      category: category.trim() || undefined,
+    });
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Edit className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Modifier le produit</DialogTitle>
+          <DialogDescription>Modifier les informations du produit {product.name}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>Nom du produit</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Nom du produit"
+            />
+          </div>
+          
+          <div>
+            <Label>Référence (SKU)</Label>
+            <Input
+              value={sku}
+              onChange={(e) => setSku(e.target.value)}
+              placeholder="Référence"
+            />
+          </div>
+
+          <div>
+            <Label>Prix TTC (MAD)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={price || ""}
+              onChange={(e) => setPrice(Number(e.target.value))}
+              placeholder="Prix en MAD"
+            />
+          </div>
+
+          <div>
+            <Label>Catégorie</Label>
+            <Input
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="Catégorie (optionnel)"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)} className="flex-1">
+              Annuler
+            </Button>
+            <Button onClick={handleSubmit} className="flex-1">
+              Enregistrer
             </Button>
           </div>
         </div>
