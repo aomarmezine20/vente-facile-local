@@ -1,8 +1,15 @@
 import { AppDB, Document, DocType, Mode, Product, Depot, Client, User, StockItem, Company } from "@/types";
+import { fetchDB as apiFetchDB, saveDB as apiSaveDB } from "./api";
 
 const KEY = "sage-lite-db";
 
-function load(): AppDB | null {
+// In-memory cache
+let dbCache: AppDB | null = null;
+let isServerMode = false;
+let serverCheckDone = false;
+
+// Try to load from localStorage as fallback
+function loadLocal(): AppDB | null {
   const raw = localStorage.getItem(KEY);
   if (!raw) return null;
   try {
@@ -12,37 +19,86 @@ function load(): AppDB | null {
   }
 }
 
-function save(db: AppDB) {
+function saveLocal(db: AppDB) {
   localStorage.setItem(KEY, JSON.stringify(db));
 }
 
+// Initialize: check if server is available, load data
+export async function initDB(): Promise<void> {
+  if (serverCheckDone) return;
+  
+  try {
+    const serverData = await apiFetchDB();
+    if (serverData !== null) {
+      dbCache = serverData;
+      isServerMode = true;
+      saveLocal(serverData); // Also save locally as backup
+    } else {
+      // Server returned null, try local
+      dbCache = loadLocal();
+      isServerMode = true; // Still use server mode, it just doesn't have data yet
+    }
+  } catch {
+    // Server not available, use local only
+    dbCache = loadLocal();
+    isServerMode = false;
+  }
+  
+  serverCheckDone = true;
+}
+
+// Sync to server (debounced)
+let saveTimeout: NodeJS.Timeout | null = null;
+async function syncToServer(db: AppDB) {
+  if (!isServerMode) return;
+  
+  // Debounce saves to server
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(async () => {
+    await apiSaveDB(db);
+  }, 500);
+}
+
 export function getDB(): AppDB {
-  const db = load();
-  if (!db) throw new Error("Database not initialized. Call seedIfNeeded().");
-  return db;
+  if (!dbCache) {
+    const local = loadLocal();
+    if (local) {
+      dbCache = local;
+      return local;
+    }
+    throw new Error("Database not initialized. Call seedIfNeeded().");
+  }
+  return dbCache;
 }
 
 export function setDB(mutator: (db: AppDB) => void): AppDB {
   const db = getDB();
   mutator(db);
-  save(db);
+  dbCache = db;
+  saveLocal(db);
+  syncToServer(db);
   return db;
 }
 
 export function seed(db: AppDB) {
-  save(db);
+  dbCache = db;
+  saveLocal(db);
+  syncToServer(db);
 }
 
 export function seedIfNeeded(seedFn: () => AppDB) {
-  const db = load();
+  const db = loadLocal();
   if (!db || !db.seeded) {
     const seeded = seedFn();
-    save(seeded);
+    dbCache = seeded;
+    saveLocal(seeded);
+    syncToServer(seeded);
+  } else {
+    dbCache = db;
   }
 }
 
 export function nextCode(mode: Mode, type: DocType, clientType?: "particulier" | "entreprise"): string {
-  // Include client type in counter key to separate numbering
   const clientSuffix = clientType === "particulier" ? "P" : clientType === "entreprise" ? "E" : "";
   const key = clientSuffix ? `${mode}-${type}-${clientSuffix}` : `${mode}-${type}`;
   let code = "";
@@ -50,7 +106,6 @@ export function nextCode(mode: Mode, type: DocType, clientType?: "particulier" |
     const n = (db.counters[key] ?? 0) + 1;
     db.counters[key] = n;
     const prefix = mode === "vente" ? "V" : "A";
-    // Format: V-FA-P-000001 or V-FA-E-000001 or V-FA-000001 (if no client type)
     code = clientSuffix 
       ? `${prefix}-${type}-${clientSuffix}-${n.toString().padStart(5, "0")}`
       : `${prefix}-${type}-${n.toString().padStart(6, "0")}`;
@@ -167,5 +222,11 @@ export function deleteUser(userId: string) {
 }
 
 export function resetDB() {
+  dbCache = null;
   localStorage.removeItem(KEY);
+}
+
+// Export server mode status
+export function isUsingServer(): boolean {
+  return isServerMode;
 }

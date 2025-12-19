@@ -1,7 +1,10 @@
 import { AppDB } from "@/types";
-import { seedIfNeeded } from "@/store/localdb";
+import { seedIfNeeded, initDB } from "@/store/localdb";
 
-export function runSeed() {
+export async function runSeed() {
+  // Initialize DB connection (check server first)
+  await initDB();
+  
   seedIfNeeded(() => {
     const now = new Date().toISOString();
     const db: AppDB = {
