@@ -10,7 +10,7 @@ import { Document, DocType, Mode, DocumentStatus } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Search } from "lucide-react";
+import { Trash2, Search, Calendar } from "lucide-react";
 import { SearchInput } from "@/components/SearchInput";
 
 function computeTotal(doc: Document) {
@@ -26,7 +26,35 @@ function nextType(t: DocType): DocType | null {
 
 export default function DocumentsList({ mode, type }: { mode: Mode; type: DocType }) {
   const navigate = useNavigate();
-  const docs = useMemo(() => getDocuments({ mode, type }), [mode, type, getDB().documents.length]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  
+  const docs = useMemo(() => {
+    let filtered = getDocuments({ mode, type });
+    
+    // Filter by search
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(doc => 
+        doc.code.toLowerCase().includes(term) ||
+        getClients().find(c => c.id === doc.clientId)?.name.toLowerCase().includes(term) ||
+        doc.vendorName?.toLowerCase().includes(term)
+      );
+    }
+    
+    // Filter by date
+    if (dateFrom) {
+      filtered = filtered.filter(doc => doc.date >= dateFrom);
+    }
+    if (dateTo) {
+      filtered = filtered.filter(doc => doc.date <= dateTo + "T23:59:59");
+    }
+    
+    // Sort by date descending (recent first)
+    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [mode, type, getDB().documents.length, searchTerm, dateFrom, dateTo]);
+  
   const products = getProducts();
   const clients = getClients();
   const depots = getDepots();
@@ -141,14 +169,40 @@ export default function DocumentsList({ mode, type }: { mode: Mode; type: DocTyp
 
       <Card>
         <CardHeader>
-          <CardTitle>Recherche</CardTitle>
+          <CardTitle>Recherche & Filtres</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <SearchInput 
-            value=""
-            onChange={() => {}}
+            value={searchTerm}
+            onChange={setSearchTerm}
             placeholder="Rechercher par code ou client..."
           />
+          <div className="flex gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Du:</span>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-40"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Au:</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-40"
+              />
+            </div>
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+                Effacer
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 

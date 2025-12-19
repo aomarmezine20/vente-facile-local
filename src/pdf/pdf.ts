@@ -169,20 +169,29 @@ export async function generateDocumentPdf(doc: Document) {
   pdf.setFillColor(...lightGray);
   pdf.setDrawColor(...teal);
   pdf.setLineWidth(0.3);
-  pdf.roundedRect(12, infoY + 10, 90, 16, 2, 2, 'FD');
+  pdf.roundedRect(12, infoY + 10, 90, 22, 2, 2, 'FD');
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(...darkGray);
-  pdf.text("Date: " + new Date(doc.date).toLocaleDateString('fr-FR'), 18, infoY + 20);
+  pdf.text("Date: " + new Date(doc.date).toLocaleDateString('fr-FR'), 18, infoY + 22);
 
   // Client box (rounded with gray fill)
   pdf.setFillColor(...lightGray);
-  pdf.roundedRect(107, infoY + 10, 90, 16, 2, 2, 'FD');
+  pdf.roundedRect(107, infoY + 10, 90, 22, 2, 2, 'FD');
   pdf.setFont("helvetica", "bold");
-  pdf.text(clientName.substring(0, 35), 152, infoY + 20, { align: "center" });
+  pdf.text(clientName.substring(0, 35), 152, infoY + 17, { align: "center" });
+  
+  // Show ICE for entreprise or phone for particulier
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+  if (client?.type === "entreprise" && client?.ice) {
+    pdf.text("ICE: " + client.ice, 152, infoY + 25, { align: "center" });
+  } else if (client?.type === "particulier" && client?.phone) {
+    pdf.text("Tel: " + client.phone, 152, infoY + 25, { align: "center" });
+  }
 
   // ========== TABLE ==========
-  const tableY = infoY + 42;
+  const tableY = infoY + 50;
 
   const tableData = doc.lines.map((l, idx) => {
     const p = products.find((pr) => pr.id === l.productId);

@@ -6,15 +6,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogHeader } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getProducts, getDepots, getStock, adjustStock, getCurrentUser } from "@/store/localdb";
+import { getProducts, getDepots, getStock, adjustStock, deleteStockItem, getCurrentUser } from "@/store/localdb";
 import { toast } from "@/hooks/use-toast";
-import { Package, AlertTriangle, TrendingUp, Search } from "lucide-react";
+import { Package, AlertTriangle, TrendingUp, Search, Trash2 } from "lucide-react";
 
 export default function StockManager() {
+  const [refreshKey, setRefreshKey] = useState(0);
   const products = getProducts();
   const depots = getDepots();
   const stock = getStock();
   const user = getCurrentUser();
+  const isAdmin = user?.role === "admin";
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDepot, setSelectedDepot] = useState<string>("all");
 
@@ -48,6 +50,18 @@ export default function StockManager() {
       title: "Stock ajusté", 
       description: `${delta > 0 ? '+' : ''}${delta} unités pour ${product?.name} (${reason})` 
     });
+    setRefreshKey(k => k + 1);
+  };
+
+  const handleDeleteStock = (depotId: string, productId: string) => {
+    deleteStockItem(depotId, productId);
+    const product = products.find(p => p.id === productId);
+    const depot = depots.find(d => d.id === depotId);
+    toast({ 
+      title: "Article supprimé du stock", 
+      description: `${product?.name} supprimé du dépôt ${depot?.name}` 
+    });
+    setRefreshKey(k => k + 1);
   };
 
   const getStockStatus = (qty: number) => {
@@ -204,12 +218,21 @@ export default function StockManager() {
                         {status.label}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="space-x-2">
                       <StockAdjustmentDialog 
                         productName={product?.name || "Produit"}
                         currentStock={s.qty}
                         onAdjust={(delta, reason) => handleStockAdjustment(s.depotId, s.productId, delta, reason)}
                       />
+                      {isAdmin && (
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleDeleteStock(s.depotId, s.productId)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

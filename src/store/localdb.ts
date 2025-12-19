@@ -141,6 +141,12 @@ export function adjustStock(depotId: string, productId: string, deltaQty: number
   });
 }
 
+export function deleteStockItem(depotId: string, productId: string) {
+  setDB((db) => {
+    db.stock = db.stock.filter((s) => !(s.depotId === depotId && s.productId === productId));
+  });
+}
+
 export function upsertUser(user: User) {
   setDB((db) => {
     const i = db.users.findIndex((u) => u.id === user.id);

@@ -20,6 +20,7 @@ export interface Client {
   phone?: string;
   address?: string;
   taxId?: string;
+  ice?: string; // ICE for entreprise
   notes?: string;
 }
 
@@ -68,7 +69,7 @@ export type DocumentStatus =
   | "facture"
   | "comptabilise";
 
-export type PaymentMethod = "especes" | "cheque" | "virement" | "carte" | "autre";
+export type PaymentMethod = "especes" | "cheque" | "virement" | "versement" | "traite" | "autre";
 export type PaymentStatus = "unpaid" | "partial" | "paid";
 
 export interface Payment {

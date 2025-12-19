@@ -159,16 +159,18 @@ export default function DocumentView() {
   const clients = getClients();
   const depots = getDepots();
 
-  // Calculate HT from TTC: HT = TTC / 1.2
+  // Calculate HT from TTC: HT = TTC / 1.2, then apply remise, then TVA on net HT
   const totalHT = useMemo(
     () => doc?.lines.reduce((s, l) => {
       const priceHT = l.unitPrice / 1.2;
-      return s + (priceHT - l.remiseAmount) * l.qty;
+      const remise = l.remiseAmount || 0;
+      // TVA applies to (priceHT - remise) * qty
+      return s + (priceHT - remise) * l.qty;
     }, 0) ?? 0,
     [doc?.lines],
   );
   
-  const tvaAmount = totalHT * 0.2; // TVA is 20% of HT
+  const tvaAmount = totalHT * 0.2; // TVA is 20% of net HT (after remise)
   const total = doc?.includeTVA ? totalHT + tvaAmount : totalHT;
 
   if (!doc) return <div>Document introuvable.</div>;
@@ -198,7 +200,9 @@ export default function DocumentView() {
       status, 
       refFromId: doc.id,
       // Default to include in accounting for factures
-      includeInAccounting: t === "FA" ? true : undefined
+      includeInAccounting: t === "FA" ? true : undefined,
+      // TVA always active for factures
+      includeTVA: t === "FA" ? true : doc.includeTVA
     };
     upsertDocument(newDoc);
 
