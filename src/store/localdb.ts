@@ -99,6 +99,18 @@ export function seedIfNeeded(seedFn: () => AppDB) {
 }
 
 export function nextCode(mode: Mode, type: DocType, clientType?: "particulier" | "entreprise"): string {
+  // For internal mode, use I prefix with separate counter
+  if (mode === "interne") {
+    const key = `interne-${type}`;
+    let code = "";
+    setDB((db) => {
+      const n = (db.counters[key] ?? 0) + 1;
+      db.counters[key] = n;
+      code = `I-${type}-${n.toString().padStart(5, "0")}`;
+    });
+    return code;
+  }
+  
   const clientSuffix = clientType === "particulier" ? "P" : clientType === "entreprise" ? "E" : "";
   const key = clientSuffix ? `${mode}-${type}-${clientSuffix}` : `${mode}-${type}`;
   let code = "";

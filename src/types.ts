@@ -1,4 +1,4 @@
-export type Mode = "vente" | "achat";
+export type Mode = "vente" | "achat" | "interne";
 export type DocType = "DV" | "BC" | "BL" | "BR" | "FA";
 
 export interface Company {

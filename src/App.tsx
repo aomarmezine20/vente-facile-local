@@ -14,6 +14,8 @@ import DocumentForm from "./pages/vente/DocumentForm";
 import DocumentView from "./pages/vente/DocumentView";
 import AchatDocumentsList from "./pages/achat/DocumentsList";
 import AchatDocumentForm from "./pages/achat/DocumentForm";
+import InterneDocumentsList from "./pages/interne/DocumentsList";
+import InterneDocumentForm from "./pages/interne/DocumentForm";
 import AdminPage from "./pages/admin/AdminPage";
 import StockManager from "./pages/StockManager";
 import ProductsCatalog from "./pages/ProductsCatalog";
@@ -76,6 +78,14 @@ const App = () => {
                     <Route path="/achats/bc" element={<AchatDocumentsList type="BC" />} />
                     <Route path="/achats/bl" element={<AchatDocumentsList type="BL" />} />
                     <Route path="/achats/factures" element={<AchatDocumentsList type="FA" />} />
+
+                    {/* Interne (non déclaré) */}
+                    <Route path="/interne/devis" element={<InterneDocumentsList type="DV" />} />
+                    <Route path="/interne/devis/nouveau" element={<InterneDocumentForm />} />
+                    <Route path="/interne/bc" element={<InterneDocumentsList type="BC" />} />
+                    <Route path="/interne/bl" element={<InterneDocumentsList type="BL" />} />
+                    <Route path="/interne/br" element={<InterneDocumentsList type="BR" />} />
+                    <Route path="/interne/factures" element={<InterneDocumentsList type="FA" />} />
 
                     {/* Stock management & Products */}
                     <Route path="/stock" element={<StockManager />} />
