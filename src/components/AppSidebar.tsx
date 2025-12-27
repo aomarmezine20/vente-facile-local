@@ -12,6 +12,7 @@ import {
   Calculator,
   Database,
   Award,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Sidebar,
@@ -42,6 +43,16 @@ const sections = [
       { title: "Bon de livraison (BL)", url: "/ventes/bl", icon: Package },
       { title: "Bon de retour (BR)", url: "/ventes/br", icon: Package },
       { title: "Factures (FA)", url: "/ventes/factures", icon: FileText },
+    ],
+  },
+  {
+    label: "Interne (Non déclaré)",
+    items: [
+      { title: "Devis (DV)", url: "/interne/devis", icon: AlertTriangle },
+      { title: "Bon de commande (BC)", url: "/interne/bc", icon: AlertTriangle },
+      { title: "Bon de livraison (BL)", url: "/interne/bl", icon: AlertTriangle },
+      { title: "Bon de retour (BR)", url: "/interne/br", icon: AlertTriangle },
+      { title: "Factures (FA)", url: "/interne/factures", icon: AlertTriangle },
     ],
   },
   {

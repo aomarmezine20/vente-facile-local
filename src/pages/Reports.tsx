@@ -13,17 +13,20 @@ import autoTable from "jspdf-autotable";
 import { Mode } from "@/types";
 
 export default function Reports() {
-  const [mode, setMode] = useState<Mode>("vente");
+  const [mode, setMode] = useState<Mode | "all">("vente");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [accountingFilter, setAccountingFilter] = useState<"all" | "included" | "excluded">("all");
 
-  const documents = getDocuments({ mode, type: "FA" }); // Only show Facture documents
+  // Get documents based on mode filter
+  const allDocs = mode === "all" 
+    ? [...getDocuments({ mode: "vente", type: "FA" }), ...getDocuments({ mode: "interne", type: "FA" })]
+    : getDocuments({ mode: mode as Mode, type: "FA" });
   const products = getProducts();
   const clients = getClients();
 
   const filteredDocuments = useMemo(() => {
-    return documents.filter((doc) => {
+    return allDocs.filter((doc) => {
       if (startDate && doc.date < startDate) return false;
       if (endDate && doc.date > endDate) return false;
       
@@ -33,7 +36,7 @@ export default function Reports() {
       
       return true;
     });
-  }, [documents, startDate, endDate, accountingFilter]);
+  }, [allDocs, startDate, endDate, accountingFilter]);
 
   // Calculate correct HT/TVA/TTC for products
   // All prices are TTC, so: HT = TTC / 1.20, TVA = HT * 0.20
@@ -175,12 +178,14 @@ export default function Reports() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <Label>Type</Label>
-              <Select value={mode} onValueChange={(v) => setMode(v as Mode)}>
+              <Select value={mode} onValueChange={(v) => setMode(v as Mode | "all")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="vente">Ventes</SelectItem>
+                  <SelectItem value="interne">Docs Interne</SelectItem>
+                  <SelectItem value="all">Ventes + Interne</SelectItem>
                   <SelectItem value="achat">Achats</SelectItem>
                 </SelectContent>
               </Select>

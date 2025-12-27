@@ -194,12 +194,10 @@ export async function generateDocumentPdf(doc: Document) {
   const tableY = infoY + 50;
 
   // MANDATORY: All prices and remises are TTC - convert to HT for display
-  // But show remise TTC for client visibility
   const tableData = doc.lines.map((l, idx) => {
     const p = products.find((pr) => pr.id === l.productId);
     const priceHT = l.unitPrice / 1.2; // Convert price TTC to HT
     const remiseHT = (l.remiseAmount || 0) / 1.2; // Convert remise TTC to HT
-    const remiseTTC = l.remiseAmount || 0; // Keep TTC for display
     const totalLineHT = (priceHT - remiseHT) * l.qty; // Apply discount on HT
 
     return [
@@ -208,7 +206,7 @@ export async function generateDocumentPdf(doc: Document) {
       l.description || p?.name || "",
       String(l.qty),
       formatMAD(priceHT),
-      remiseTTC > 0 ? formatMAD(remiseTTC) : "-", // Show remise TTC
+      remiseHT > 0 ? formatMAD(remiseHT) : "-", // Show remise HT
       formatMAD(totalLineHT)
     ];
   });
@@ -218,7 +216,7 @@ export async function generateDocumentPdf(doc: Document) {
 
   autoTable(pdf, {
     startY: tableY,
-    head: [["N°", "Réf.", "Désignation", "QTE", "P.U.H.T", "Remise TTC", "Total H.T"]],
+    head: [["N°", "Réf.", "Désignation", "QTE", "P.U.H.T", "Remise H.T", "Total H.T"]],
     body: tableData,
     theme: "grid",
     headStyles: {
@@ -308,12 +306,11 @@ export async function generateDocumentPdf(doc: Document) {
   pdf.text(formatMAD(totalHT), totX + totWidth - 5, currentY, { align: "right" });
   currentY += 8;
 
-  // Remises (show TTC for client visibility)
-  const remiseTotalTTC = doc.lines.reduce((s, l) => s + (l.remiseAmount || 0) * l.qty, 0);
-  if (remiseTotalTTC > 0) {
-    pdf.text("Remises TTC:", totX + 5, currentY);
+  // Remises (show HT)
+  if (remiseTotalHT > 0) {
+    pdf.text("Remises H.T:", totX + 5, currentY);
     pdf.setTextColor(180, 40, 40);
-    pdf.text("-" + formatMAD(remiseTotalTTC), totX + totWidth - 5, currentY, { align: "right" });
+    pdf.text("-" + formatMAD(remiseTotalHT), totX + totWidth - 5, currentY, { align: "right" });
     pdf.setTextColor(...darkGray);
     currentY += 8;
   }
