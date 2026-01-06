@@ -68,7 +68,7 @@ const sections = [
     label: "Stocks",
     items: [
       { title: "Catalogue", url: "/products", icon: ShoppingBag },
-      { title: "Gestion des stocks", url: "/stock", icon: Warehouse },
+      { title: "Gestion des stocks", url: "/stock", icon: Warehouse, adminOnly: true },
     ],
   },
   {
@@ -90,17 +90,10 @@ export function AppSidebar() {
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarContent>
         {sections
-          .filter((section) => {
-            // Hide dashboard and admin sections for non-admin users
-            if ((section.label === "Tableau de bord" || section.label === "Administration") && user?.role !== "admin") {
-              return false;
-            }
-            return true;
-          })
           .map((section) => {
-            // Filter out stock management for non-admin users
+            // Filter out admin-only items for non-admin users
             const filteredItems = section.items.filter((item) => {
-              if (item.url === "/stock" && user?.role !== "admin") {
+              if ((item as any).adminOnly && user?.role !== "admin") {
                 return false;
               }
               return true;

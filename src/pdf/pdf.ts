@@ -176,9 +176,9 @@ export async function generateDocumentPdf(doc: Document) {
   pdf.setTextColor(...darkGray);
   pdf.text("Date: " + new Date(doc.date).toLocaleDateString('fr-FR'), 18, infoY + 22);
 
-  // Client box (rounded with gray fill)
+  // Client box (rounded with gray fill) - taller to fit address
   pdf.setFillColor(...lightGray);
-  pdf.roundedRect(107, infoY + 10, 90, 22, 2, 2, 'FD');
+  pdf.roundedRect(107, infoY + 10, 90, 32, 2, 2, 'FD');
   
   // Show client code on top right of client box
   if (client?.code) {
@@ -193,17 +193,26 @@ export async function generateDocumentPdf(doc: Document) {
   pdf.setTextColor(...darkGray);
   pdf.text(clientName.substring(0, 35), 152, infoY + 22, { align: "center" });
   
-  // Show ICE for entreprise or phone for particulier
+  // Show address if available
   pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(...grayText);
+  if (client?.address) {
+    const addressLines = pdf.splitTextToSize(client.address, 80);
+    pdf.text(addressLines.slice(0, 2), 152, infoY + 28, { align: "center" });
+  }
+  
+  // Show ICE for entreprise or phone for particulier
   pdf.setFontSize(9);
+  pdf.setTextColor(...darkGray);
   if (client?.type === "entreprise" && client?.ice) {
-    pdf.text("ICE: " + client.ice, 152, infoY + 28, { align: "center" });
+    pdf.text("ICE: " + client.ice, 152, infoY + 38, { align: "center" });
   } else if (client?.type === "particulier" && client?.phone) {
-    pdf.text("Tel: " + client.phone, 152, infoY + 28, { align: "center" });
+    pdf.text("Tel: " + client.phone, 152, infoY + 38, { align: "center" });
   }
 
   // ========== TABLE (no remise column) ==========
-  const tableY = infoY + 50;
+  const tableY = infoY + 58;
 
   // MANDATORY: All prices and remises are TTC - convert to HT for display
   const tableData = doc.lines.map((l, idx) => {
