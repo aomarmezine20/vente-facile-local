@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct, getStock, adjustStock, resetDB, setDB, upsertUser, deleteUser, getCounters, setCounter } from "@/store/localdb";
+import { getClients, getCompany, getDepots, getProducts, getUsers, setCompany, upsertClient, upsertDepot, upsertProduct, getStock, adjustStock, resetDB, setDB, upsertUser, deleteUser, getCounters, setCounter, nextClientCode } from "@/store/localdb";
 import { Product, Depot, Client, Company, User, Mode, DocType } from "@/types";
 import { fmtMAD } from "@/utils/format";
 import { toast } from "sonner";
@@ -113,7 +113,7 @@ export default function AdminPage() {
   };
 
   const addClient = () => {
-    const c: Client = { id: `c_${Date.now()}`, name: "Nouveau client", type: "particulier" };
+    const c: Client = { id: `c_${Date.now()}`, code: nextClientCode(), name: "Nouveau client", type: "particulier" };
     upsertClient(c);
     setClients(getClients());
   };
@@ -199,6 +199,34 @@ export default function AdminPage() {
                 <div className="flex items-center gap-3">
                   <Input ref={logoInput} type="file" accept="image/*" onChange={onLogoChange} />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>Paramètres du pied de page (PDF)</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm">Capital</label>
+                <Input value={company.capital || ""} onChange={(e) => setCompanyState({ ...company, capital: e.target.value })} placeholder="Ex: 200.000,00 DH" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm">RC (Registre de Commerce)</label>
+                <Input value={company.rc || ""} onChange={(e) => setCompanyState({ ...company, rc: e.target.value })} placeholder="Ex: 487155" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm">IF (Identifiant Fiscal)</label>
+                <Input value={company.if || ""} onChange={(e) => setCompanyState({ ...company, if: e.target.value })} placeholder="Ex: 48541278" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm">TP (Taxe Professionnelle)</label>
+                <Input value={company.tp || ""} onChange={(e) => setCompanyState({ ...company, tp: e.target.value })} placeholder="Ex: 32252429" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm">ICE</label>
+                <Input value={company.ice || ""} onChange={(e) => setCompanyState({ ...company, ice: e.target.value })} placeholder="Ex: 002726225000084" />
               </div>
               <div className="md:col-span-2 flex items-center gap-2">
                 <Button onClick={saveCompany}>Sauvegarder</Button>

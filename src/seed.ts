@@ -14,6 +14,11 @@ export async function runSeed() {
         phone: "+212 5XX XX XX XX",
         email: "contact@atlasportes.ma",
         currency: "MAD",
+        capital: "200.000,00 DH",
+        rc: "487155",
+        if: "48541278",
+        tp: "32252429",
+        ice: "002726225000084",
       },
       users: [
         { id: "u1", username: "admin", role: "admin", password: "admin" },
@@ -21,8 +26,8 @@ export async function runSeed() {
       ],
       currentUserId: "u1",
       clients: [
-        { id: "c1", name: "Client Particulier", type: "particulier" },
-        { id: "c2", name: "Client Entreprise", type: "entreprise" },
+        { id: "c1", code: "CL-00001", name: "Client Particulier", type: "particulier" },
+        { id: "c2", code: "CL-00002", name: "Client Entreprise", type: "entreprise" },
       ],
       depots: [
         { id: "d1", name: "Dépôt Central" },
@@ -41,7 +46,7 @@ export async function runSeed() {
       ],
       documents: [],
       payments: [],
-      counters: {},
+      counters: { client: 2 },
       seeded: true,
     };
 

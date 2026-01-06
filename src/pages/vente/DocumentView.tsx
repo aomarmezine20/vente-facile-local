@@ -189,12 +189,8 @@ export default function DocumentView() {
     const t = nextType(doc.type);
     if (!t || hasBeenTransformed) return;
     
-    // Get client type for document code
-    const client = doc.clientId ? clients.find(c => c.id === doc.clientId) : null;
-    const clientType = client?.type as "particulier" | "entreprise" | undefined;
-    
     const id = `doc_${Date.now()}`;
-    const code = nextCode(doc.mode, t, clientType);
+    const code = nextCode(doc.mode, t);
     const date = todayISO();
     
     let status: DocumentStatus = "valide";
@@ -229,12 +225,8 @@ export default function DocumentView() {
   };
 
   const createBR = (doc: Document) => {
-    // Get client type for document code
-    const client = doc.clientId ? clients.find(c => c.id === doc.clientId) : null;
-    const clientType = client?.type as "particulier" | "entreprise" | undefined;
-    
     const id = `doc_${Date.now()}`;
-    const code = nextCode(doc.mode, "BR", clientType);
+    const code = nextCode(doc.mode, "BR");
     const date = todayISO();
     const br: Document = { ...doc, id, code, type: "BR", date, status: "valide", refFromId: doc.id };
     upsertDocument(br);

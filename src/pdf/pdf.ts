@@ -61,8 +61,8 @@ function amountToFrenchWords(amount: number): string {
 function formatMAD(num: number): string {
   const fixed = num.toFixed(2);
   const parts = fixed.split('.');
-  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return intPart + ',' + parts[1] + ' MAD';
+  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return intPart + ',' + parts[1];
 }
 
 export async function generateDocumentPdf(doc: Document) {
@@ -82,6 +82,7 @@ export async function generateDocumentPdf(doc: Document) {
   const typeMap: Record<string, Record<string, string>> = {
     vente: { DV: "DEVIS", BC: "BON DE COMMANDE", BL: "BON DE LIVRAISON", BR: "BON DE RETOUR", FA: "FACTURE" },
     achat: { DV: "DEVIS", BC: "BON DE COMMANDE", BL: "BON DE RECEPTION", BR: "BON DE RETOUR", FA: "FACTURE" },
+    interne: { DV: "DEVIS", BC: "BON DE COMMANDE", BL: "BON DE LIVRAISON", BR: "BON DE RETOUR", FA: "FACTURE" },
   };
 
   const includeTVA = doc.includeTVA === true;
@@ -178,19 +179,30 @@ export async function generateDocumentPdf(doc: Document) {
   // Client box (rounded with gray fill)
   pdf.setFillColor(...lightGray);
   pdf.roundedRect(107, infoY + 10, 90, 22, 2, 2, 'FD');
+  
+  // Show client code on top right of client box
+  if (client?.code) {
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.setTextColor(...grayText);
+    pdf.text("Code: " + client.code, 192, infoY + 16, { align: "right" });
+  }
+  
   pdf.setFont("helvetica", "bold");
-  pdf.text(clientName.substring(0, 35), 152, infoY + 17, { align: "center" });
+  pdf.setFontSize(10);
+  pdf.setTextColor(...darkGray);
+  pdf.text(clientName.substring(0, 35), 152, infoY + 22, { align: "center" });
   
   // Show ICE for entreprise or phone for particulier
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(9);
   if (client?.type === "entreprise" && client?.ice) {
-    pdf.text("ICE: " + client.ice, 152, infoY + 25, { align: "center" });
+    pdf.text("ICE: " + client.ice, 152, infoY + 28, { align: "center" });
   } else if (client?.type === "particulier" && client?.phone) {
-    pdf.text("Tel: " + client.phone, 152, infoY + 25, { align: "center" });
+    pdf.text("Tel: " + client.phone, 152, infoY + 28, { align: "center" });
   }
 
-  // ========== TABLE ==========
+  // ========== TABLE (no remise column) ==========
   const tableY = infoY + 50;
 
   // MANDATORY: All prices and remises are TTC - convert to HT for display
@@ -206,7 +218,6 @@ export async function generateDocumentPdf(doc: Document) {
       l.description || p?.name || "",
       String(l.qty),
       formatMAD(priceHT),
-      remiseHT > 0 ? formatMAD(remiseHT) : "-", // Show remise HT
       formatMAD(totalLineHT)
     ];
   });
@@ -216,7 +227,7 @@ export async function generateDocumentPdf(doc: Document) {
 
   autoTable(pdf, {
     startY: tableY,
-    head: [["N°", "Réf.", "Désignation", "QTE", "P.U.H.T", "Remise H.T", "Total H.T"]],
+    head: [["N°", "Réf.", "Désignation", "QTE", "P.U.H.T", "Total H.T"]],
     body: tableData,
     theme: "grid",
     headStyles: {
@@ -239,12 +250,11 @@ export async function generateDocumentPdf(doc: Document) {
     },
     columnStyles: {
       0: { halign: "center", cellWidth: 14, overflow: 'visible' },
-      1: { halign: "center", cellWidth: 22, overflow: 'visible' },
-      2: { halign: "left", cellWidth: 50 },
-      3: { halign: "center", cellWidth: 16, overflow: 'visible' },
+      1: { halign: "center", cellWidth: 25, overflow: 'visible' },
+      2: { halign: "left", cellWidth: 70 },
+      3: { halign: "center", cellWidth: 18, overflow: 'visible' },
       4: { halign: "right", cellWidth: 30, overflow: 'visible' },
-      5: { halign: "center", cellWidth: 26, overflow: 'visible' },
-      6: { halign: "right", cellWidth: 30, overflow: 'visible' }
+      5: { halign: "right", cellWidth: 30, overflow: 'visible' }
     },
     styles: {
       lineColor: grayBorder, // Gray border
@@ -257,15 +267,23 @@ export async function generateDocumentPdf(doc: Document) {
   const finalY = pdf.lastAutoTable.finalY + 12;
 
   // MANDATORY: Calculate totals with TTC->HT conversion
-  const totalHT = doc.lines.reduce((s, l) => {
-    const priceHT = l.unitPrice / 1.2; // Convert price TTC to HT
-    const remiseHT = (l.remiseAmount || 0) / 1.2; // Convert remise TTC to HT
-    return s + (priceHT - remiseHT) * l.qty;
+  // Total HT(HR) = sum of all line prices before discount
+  const totalHTBrut = doc.lines.reduce((s, l) => {
+    const priceHT = l.unitPrice / 1.2;
+    return s + priceHT * l.qty;
   }, 0);
 
+  // Total remise HT
   const remiseTotalHT = doc.lines.reduce((s, l) => s + ((l.remiseAmount || 0) / 1.2) * l.qty, 0);
-  const totalTVA = includeTVA ? totalHT * 0.2 : 0;
-  const finalTotal = includeTVA ? totalHT + totalTVA : totalHT;
+  
+  // Total HT NET (after discount)
+  const totalHTNet = totalHTBrut - remiseTotalHT;
+
+  // TVA on net HT
+  const totalTVA = includeTVA ? totalHTNet * 0.2 : 0;
+  
+  // Final TTC
+  const finalTotal = includeTVA ? totalHTNet + totalTVA : totalHTNet;
 
   // ========== AMOUNT IN WORDS (left) ==========
   pdf.setFontSize(9);
@@ -280,65 +298,59 @@ export async function generateDocumentPdf(doc: Document) {
   const wordLines = pdf.splitTextToSize(words, 85);
   pdf.text(wordLines, 12, finalY + 6);
 
-  // ========== TOTALS BOX (right, rounded with gray fill) ==========
-  const totX = 130;
-  const totY = finalY - 5;
-  const totWidth = 67;
-  const totHeight = includeTVA ? 42 : 32;
-
-  // Gray fill first
-  pdf.setFillColor(...lightGray);
-  pdf.roundedRect(totX, totY, totWidth, totHeight, 3, 3, 'F');
+  // ========== TOTALS TABLE (right side, like reference image) ==========
+  const totX = 107;
+  const totY = finalY - 8;
+  const totWidth = 90;
+  const rowHeight = 8;
   
-  // Blue border
-  pdf.setDrawColor(...teal);
-  pdf.setLineWidth(0.4);
-  pdf.roundedRect(totX, totY, totWidth, totHeight, 3, 3, 'S');
-
-  let currentY = totY + 9;
-
-  pdf.setFontSize(10);
-  pdf.setFont("helvetica", "normal");
-  pdf.setTextColor(...darkGray);
-
-  // Total H.T
-  pdf.text("Total H.T:", totX + 5, currentY);
-  pdf.text(formatMAD(totalHT), totX + totWidth - 5, currentY, { align: "right" });
-  currentY += 8;
-
-  // Remises (show HT)
-  if (remiseTotalHT > 0) {
-    pdf.text("Remises H.T:", totX + 5, currentY);
-    pdf.setTextColor(180, 40, 40);
-    pdf.text("-" + formatMAD(remiseTotalHT), totX + totWidth - 5, currentY, { align: "right" });
-    pdf.setTextColor(...darkGray);
-    currentY += 8;
-  }
-
-  // TVA
+  // Draw totals table with borders
+  const totalsData = [
+    { label: "Total H.T(HR)", value: formatMAD(totalHTBrut), highlight: false },
+    { label: "Remise H.T", value: formatMAD(remiseTotalHT), highlight: false },
+    { label: "Montant P.V", value: "0,00", highlight: false },
+    { label: "Total H.T(NET)", value: formatMAD(totalHTNet), highlight: false },
+  ];
+  
   if (includeTVA) {
-    pdf.text("TVA 20%:", totX + 5, currentY);
-    pdf.text(formatMAD(totalTVA), totX + totWidth - 5, currentY, { align: "right" });
-    currentY += 10;
+    totalsData.push({ label: "T.V.A", value: formatMAD(totalTVA), highlight: false });
   }
+  totalsData.push({ label: "NET A PAYER T.T.C", value: formatMAD(finalTotal), highlight: true });
 
-  // Separator line
-  pdf.setDrawColor(...teal);
-  pdf.setLineWidth(0.8);
-  pdf.line(totX + 3, currentY - 3, totX + totWidth - 3, currentY - 3);
-  currentY += 5;
-
-  // TOTAL
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(11);
-  const totalLabel = includeTVA ? "TOTAL TTC:" : "TOTAL H.T:";
-  pdf.text(totalLabel, totX + 5, currentY);
-  pdf.text(formatMAD(finalTotal), totX + totWidth - 5, currentY, { align: "right" });
+  let currentY = totY;
+  const colWidth1 = 45;
+  const colWidth2 = 45;
+  
+  totalsData.forEach((row, idx) => {
+    // Background for highlighted rows
+    if (row.highlight) {
+      pdf.setFillColor(255, 255, 150); // Yellow highlight
+    } else {
+      pdf.setFillColor(255, 255, 255);
+    }
+    pdf.rect(totX, currentY, colWidth1, rowHeight, 'F');
+    pdf.rect(totX + colWidth1, currentY, colWidth2, rowHeight, 'F');
+    
+    // Borders
+    pdf.setDrawColor(...grayBorder);
+    pdf.setLineWidth(0.2);
+    pdf.rect(totX, currentY, colWidth1, rowHeight, 'S');
+    pdf.rect(totX + colWidth1, currentY, colWidth2, rowHeight, 'S');
+    
+    // Text
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", row.highlight ? "bold" : "normal");
+    pdf.setTextColor(...darkGray);
+    pdf.text(row.label, totX + 3, currentY + 5.5);
+    pdf.text(row.value, totX + colWidth1 + colWidth2 - 3, currentY + 5.5, { align: "right" });
+    
+    currentY += rowHeight;
+  });
 
   // ========== PAYMENT SECTION ==========
   if (doc.type === "FA") {
     const payments = db.payments.filter(p => p.documentId === doc.id);
-    const payY = finalY + 18;
+    const payY = totY + (totalsData.length * rowHeight) + 10;
 
     // Mode de paiement box (rounded)
     pdf.setDrawColor(...teal);
@@ -365,7 +377,7 @@ export async function generateDocumentPdf(doc: Document) {
         const date = new Date(payment.date).toLocaleDateString('fr-FR');
         pdf.setFont("helvetica", "normal");
         pdf.setTextColor(...darkGray);
-        pdf.text("• " + method + ": " + formatMAD(payment.amount) + " (" + date + ")", 12, pY);
+        pdf.text("• " + method + ": " + formatMAD(payment.amount) + " MAD (" + date + ")", 12, pY);
         pY += 6;
       });
 
@@ -373,7 +385,7 @@ export async function generateDocumentPdf(doc: Document) {
       if (remaining > 0) {
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(180, 40, 40);
-        pdf.text("Reste a payer: " + formatMAD(remaining), 12, pY);
+        pdf.text("Reste a payer: " + formatMAD(remaining) + " MAD", 12, pY);
       } else {
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(...teal);
@@ -393,15 +405,15 @@ export async function generateDocumentPdf(doc: Document) {
   pdf.setLineWidth(0.5);
   pdf.line(12, footerY, pageWidth - 12, footerY);
 
-  // Footer text - first line bold, others normal, slightly bigger
+  // Footer text - using settings from company
   pdf.setFontSize(9);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...darkGray);
-  pdf.text("S.A.R.L au capital de 200.000,00 DH • Siege: " + (company?.address || "14 RUE EL HATIMI RIVIERA,CASABLANCA"), pageWidth / 2, footerY + 4, { align: "center" });
+  pdf.text(`S.A.R.L au capital de ${company?.capital || "200.000,00 DH"} • Siege: ${company?.address || "14 RUE EL HATIMI RIVIERA,CASABLANCA"}`, pageWidth / 2, footerY + 4, { align: "center" });
 
   pdf.setFont("helvetica", "normal");
-  pdf.text("Tel: " + (company?.phone || "+212 522995252") + " | Email: " + (company?.email || "contact.smartexit@gmail.com"), pageWidth / 2, footerY + 9, { align: "center" });
-  pdf.text("RC: 487155 | IF: 48541278 | TP: 32252429 | ICE: 002726225000084", pageWidth / 2, footerY + 14, { align: "center" });
+  pdf.text(`Tel: ${company?.phone || "+212 522995252"} | Email: ${company?.email || "contact.smartexit@gmail.com"}`, pageWidth / 2, footerY + 9, { align: "center" });
+  pdf.text(`RC: ${company?.rc || "487155"} | IF: ${company?.if || "48541278"} | TP: ${company?.tp || "32252429"} | ICE: ${company?.ice || "002726225000084"}`, pageWidth / 2, footerY + 14, { align: "center" });
 
   pdf.save(doc.code + ".pdf");
 }

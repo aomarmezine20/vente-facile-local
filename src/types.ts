@@ -8,12 +8,19 @@ export interface Company {
   email?: string;
   logoDataUrl?: string; // base64
   currency: "MAD";
+  // Footer settings for PDF
+  capital?: string;
+  rc?: string;
+  if?: string;
+  tp?: string;
+  ice?: string;
 }
 
 export type ClientType = "particulier" | "entreprise";
 
 export interface Client {
   id: string;
+  code: string; // Client code (e.g., CL-00001)
   name: string;
   type: ClientType;
   email?: string;
