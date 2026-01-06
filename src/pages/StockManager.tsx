@@ -233,25 +233,30 @@ export default function StockManager() {
                       </Badge>
                     </TableCell>
                     <TableCell className="space-x-2">
-                      <StockAdjustmentDialog 
-                        productName={product?.name || "Produit"}
-                        currentStock={s.qty}
-                        onAdjust={(delta, reason) => handleStockAdjustment(s.depotId, s.productId, delta, reason)}
-                      />
-                      {product && (
-                        <ProductEditDialog 
-                          product={product}
-                          onSave={handleProductUpdate}
-                        />
-                      )}
                       {isAdmin && (
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => handleDeleteStock(s.depotId, s.productId)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <>
+                          <StockAdjustmentDialog 
+                            productName={product?.name || "Produit"}
+                            currentStock={s.qty}
+                            onAdjust={(delta, reason) => handleStockAdjustment(s.depotId, s.productId, delta, reason)}
+                          />
+                          {product && (
+                            <ProductEditDialog 
+                              product={product}
+                              onSave={handleProductUpdate}
+                            />
+                          )}
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => handleDeleteStock(s.depotId, s.productId)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      {!isAdmin && (
+                        <span className="text-sm text-muted-foreground">Lecture seule</span>
                       )}
                     </TableCell>
                   </TableRow>

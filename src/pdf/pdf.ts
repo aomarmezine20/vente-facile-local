@@ -304,11 +304,10 @@ export async function generateDocumentPdf(doc: Document) {
   const totWidth = 90;
   const rowHeight = 8;
   
-  // Draw totals table with borders
+  // Draw totals table with borders (no Montant P.V)
   const totalsData = [
     { label: "Total H.T(HR)", value: formatMAD(totalHTBrut), highlight: false },
     { label: "Remise H.T", value: formatMAD(remiseTotalHT), highlight: false },
-    { label: "Montant P.V", value: "0,00", highlight: false },
     { label: "Total H.T(NET)", value: formatMAD(totalHTNet), highlight: false },
   ];
   
