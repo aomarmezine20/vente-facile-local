@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, Upload, Database, Server, Laptop } from "lucide-react";
+import { Download, Upload, Database, Server, Laptop, FileText, Users, Package, Warehouse, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import JSZip from "jszip";
 import { getDB, isUsingServer } from "@/store/localdb";
@@ -25,8 +25,35 @@ export default function Backup() {
       const db = getDB();
       const zip = new JSZip();
       
-      // Add database as JSON
+      // Add complete database as JSON - includes EVERYTHING
       zip.file("database.json", JSON.stringify(db, null, 2));
+      
+      // Add separate files for easier inspection
+      zip.file("company.json", JSON.stringify(db.company, null, 2));
+      zip.file("clients.json", JSON.stringify(db.clients, null, 2));
+      zip.file("products.json", JSON.stringify(db.products, null, 2));
+      zip.file("depots.json", JSON.stringify(db.depots, null, 2));
+      zip.file("stock.json", JSON.stringify(db.stock, null, 2));
+      zip.file("documents.json", JSON.stringify(db.documents, null, 2));
+      zip.file("payments.json", JSON.stringify(db.payments, null, 2));
+      zip.file("users.json", JSON.stringify(db.users, null, 2));
+      zip.file("counters.json", JSON.stringify(db.counters, null, 2));
+      
+      // Add a manifest with backup info
+      const manifest = {
+        backupDate: new Date().toISOString(),
+        version: "1.0",
+        stats: {
+          clients: db.clients.length,
+          products: db.products.length,
+          depots: db.depots.length,
+          documents: db.documents.length,
+          payments: db.payments.length,
+          users: db.users.length,
+          stockItems: db.stock.length,
+        }
+      };
+      zip.file("manifest.json", JSON.stringify(manifest, null, 2));
       
       // Generate zip
       const blob = await zip.generateAsync({ type: "blob" });
@@ -35,7 +62,7 @@ export default function Backup() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `backup_${new Date().toISOString().split('T')[0]}.zip`;
+      link.download = `backup_complet_${new Date().toISOString().split('T')[0]}.zip`;
       link.click();
       URL.revokeObjectURL(url);
       
@@ -45,8 +72,8 @@ export default function Backup() {
       setLastBackup(now);
       
       toast({
-        title: "Sauvegarde créée",
-        description: "Votre sauvegarde a été téléchargée avec succès",
+        title: "Sauvegarde complète créée",
+        description: `${db.documents.length} documents, ${db.clients.length} clients, ${db.products.length} produits sauvegardés`,
       });
     } catch (error) {
       toast({
@@ -68,11 +95,16 @@ export default function Backup() {
       // Read database.json
       const dbFile = contents.file("database.json");
       if (!dbFile) {
-        throw new Error("Invalid backup file");
+        throw new Error("Invalid backup file - database.json not found");
       }
       
       const dbContent = await dbFile.async("string");
       const newDB = JSON.parse(dbContent);
+      
+      // Validate the backup structure
+      if (!newDB.company || !newDB.clients || !newDB.products || !newDB.documents) {
+        throw new Error("Invalid backup file - missing required data");
+      }
       
       // Restore to localStorage
       localStorage.setItem("sage-lite-db", JSON.stringify(newDB));
@@ -84,7 +116,7 @@ export default function Backup() {
       
       toast({
         title: "Restauration réussie",
-        description: "Les données ont été restaurées. La page va se recharger.",
+        description: `${newDB.documents.length} documents, ${newDB.clients.length} clients, ${newDB.products.length} produits restaurés. La page va se recharger.`,
       });
       
       // Reload after 1 second
@@ -94,11 +126,13 @@ export default function Backup() {
     } catch (error) {
       toast({
         title: "Erreur",
-        description: "Impossible de restaurer la sauvegarde",
+        description: error instanceof Error ? error.message : "Impossible de restaurer la sauvegarde",
         variant: "destructive",
       });
     }
   };
+
+  const db = getDB();
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -128,16 +162,58 @@ export default function Backup() {
           </CardDescription>
         </CardHeader>
       </Card>
+
+      {/* Current data stats */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Database className="h-5 w-5" />
+            Données actuelles
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+              <FileText className="h-5 w-5 text-primary" />
+              <div>
+                <div className="text-2xl font-bold">{db.documents.length}</div>
+                <div className="text-xs text-muted-foreground">Documents</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+              <Users className="h-5 w-5 text-primary" />
+              <div>
+                <div className="text-2xl font-bold">{db.clients.length}</div>
+                <div className="text-xs text-muted-foreground">Clients</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+              <Package className="h-5 w-5 text-primary" />
+              <div>
+                <div className="text-2xl font-bold">{db.products.length}</div>
+                <div className="text-xs text-muted-foreground">Produits</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+              <Warehouse className="h-5 w-5 text-primary" />
+              <div>
+                <div className="text-2xl font-bold">{db.stock.length}</div>
+                <div className="text-xs text-muted-foreground">Stocks</div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Download className="h-5 w-5" />
-              Créer une sauvegarde
+              Créer une sauvegarde complète
             </CardTitle>
             <CardDescription>
-              Téléchargez toutes vos données dans un fichier ZIP
+              Téléchargez toutes vos données dans un fichier ZIP : documents, clients, produits, stock, paiements, paramètres...
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -146,9 +222,20 @@ export default function Backup() {
                 Dernière sauvegarde : {new Date(lastBackup).toLocaleString('fr-FR')}
               </p>
             )}
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>La sauvegarde inclut :</p>
+              <ul className="list-disc list-inside ml-2">
+                <li>Tous les documents (devis, BC, BL, BR, factures)</li>
+                <li>Tous les clients avec leurs codes</li>
+                <li>Tous les produits et le stock</li>
+                <li>Tous les paiements</li>
+                <li>Les paramètres de la société</li>
+                <li>Les compteurs de numérotation</li>
+              </ul>
+            </div>
             <Button onClick={downloadBackup} className="w-full">
               <Download className="mr-2 h-4 w-4" />
-              Télécharger la sauvegarde
+              Télécharger la sauvegarde complète
             </Button>
           </CardContent>
         </Card>
@@ -160,7 +247,7 @@ export default function Backup() {
               Restaurer une sauvegarde
             </CardTitle>
             <CardDescription>
-              Importez un fichier de sauvegarde pour restaurer vos données
+              Importez un fichier de sauvegarde pour restaurer toutes vos données
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -184,7 +271,7 @@ export default function Backup() {
                 />
               </div>
               <p className="text-sm text-destructive">
-                ⚠️ Attention : Cette action remplacera toutes les données actuelles
+                ⚠️ Attention : Cette action remplacera TOUTES les données actuelles (documents, clients, produits, stock, paiements, paramètres...)
               </p>
             </div>
           </CardContent>

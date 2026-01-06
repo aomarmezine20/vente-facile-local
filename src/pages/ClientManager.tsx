@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { getClients, upsertClient } from "@/store/localdb";
+import { getClients, upsertClient, nextClientCode } from "@/store/localdb";
 import { Client, ClientType } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2 } from "lucide-react";
@@ -50,6 +50,7 @@ export default function ClientManager() {
 
     const clientData: Client = {
       id: editingClient?.id || `cl_${Date.now()}`,
+      code: editingClient?.code || nextClientCode(),
       name: formData.name.trim(),
       type: formData.type,
       email: formData.email.trim() || undefined,
@@ -218,6 +219,7 @@ export default function ClientManager() {
             <Table className="max-w-6xl">
               <TableHeader>
                 <TableRow>
+                  <TableHead>Code</TableHead>
                   <TableHead>Nom</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Email</TableHead>
@@ -227,8 +229,9 @@ export default function ClientManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clients.map((client) => (
+              {clients.map((client) => (
                   <TableRow key={client.id}>
+                    <TableCell className="font-mono text-sm">{client.code}</TableCell>
                     <TableCell className="font-medium">{client.name}</TableCell>
                     <TableCell>
                       <Badge variant={client.type === "entreprise" ? "default" : "secondary"}>

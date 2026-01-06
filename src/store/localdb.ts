@@ -99,28 +99,39 @@ export function seedIfNeeded(seedFn: () => AppDB) {
 }
 
 export function nextCode(mode: Mode, type: DocType, clientType?: "particulier" | "entreprise"): string {
+  const year = new Date().getFullYear().toString().slice(-2); // Get last 2 digits of year (e.g., "26")
+  
   // For internal mode, use I prefix with separate counter
   if (mode === "interne") {
-    const key = `interne-${type}`;
+    const key = `interne-${type}-${year}`;
     let code = "";
     setDB((db) => {
       const n = (db.counters[key] ?? 0) + 1;
       db.counters[key] = n;
-      code = `I-${type}-${n.toString().padStart(5, "0")}`;
+      code = `I-${type}${year}-${n.toString().padStart(5, "0")}`;
     });
     return code;
   }
   
-  const clientSuffix = clientType === "particulier" ? "P" : clientType === "entreprise" ? "E" : "";
-  const key = clientSuffix ? `${mode}-${type}-${clientSuffix}` : `${mode}-${type}`;
+  // Unified ID format for vente/achat - no P/E distinction, includes year
+  const prefix = mode === "vente" ? "V" : "A";
+  const key = `${mode}-${type}-${year}`;
   let code = "";
   setDB((db) => {
     const n = (db.counters[key] ?? 0) + 1;
     db.counters[key] = n;
-    const prefix = mode === "vente" ? "V" : "A";
-    code = clientSuffix 
-      ? `${prefix}-${type}-${clientSuffix}-${n.toString().padStart(5, "0")}`
-      : `${prefix}-${type}-${n.toString().padStart(6, "0")}`;
+    code = `${prefix}-${type}${year}-${n.toString().padStart(5, "0")}`;
+  });
+  return code;
+}
+
+// Generate next client code
+export function nextClientCode(): string {
+  let code = "";
+  setDB((db) => {
+    const n = (db.counters["client"] ?? 0) + 1;
+    db.counters["client"] = n;
+    code = `CL-${n.toString().padStart(5, "0")}`;
   });
   return code;
 }
