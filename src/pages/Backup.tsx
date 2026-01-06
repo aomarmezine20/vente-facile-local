@@ -25,8 +25,17 @@ export default function Backup() {
       const db = getDB();
       const zip = new JSZip();
       
+      // Get certificates from localStorage
+      const certificates = JSON.parse(localStorage.getItem("certificates") || "[]");
+      const certificateTemplates = JSON.parse(localStorage.getItem("certificateTemplates") || "[]");
+      
       // Add complete database as JSON - includes EVERYTHING
-      zip.file("database.json", JSON.stringify(db, null, 2));
+      const fullBackup = {
+        ...db,
+        certificates,
+        certificateTemplates,
+      };
+      zip.file("database.json", JSON.stringify(fullBackup, null, 2));
       
       // Add separate files for easier inspection
       zip.file("company.json", JSON.stringify(db.company, null, 2));
@@ -38,6 +47,8 @@ export default function Backup() {
       zip.file("payments.json", JSON.stringify(db.payments, null, 2));
       zip.file("users.json", JSON.stringify(db.users, null, 2));
       zip.file("counters.json", JSON.stringify(db.counters, null, 2));
+      zip.file("certificates.json", JSON.stringify(certificates, null, 2));
+      zip.file("certificateTemplates.json", JSON.stringify(certificateTemplates, null, 2));
       
       // Add a manifest with backup info
       const manifest = {
@@ -104,6 +115,16 @@ export default function Backup() {
       // Validate the backup structure
       if (!newDB.company || !newDB.clients || !newDB.products || !newDB.documents) {
         throw new Error("Invalid backup file - missing required data");
+      }
+      
+      // Restore certificates if present
+      if (newDB.certificates) {
+        localStorage.setItem("certificates", JSON.stringify(newDB.certificates));
+        delete newDB.certificates;
+      }
+      if (newDB.certificateTemplates) {
+        localStorage.setItem("certificateTemplates", JSON.stringify(newDB.certificateTemplates));
+        delete newDB.certificateTemplates;
       }
       
       // Restore to localStorage
@@ -231,6 +252,8 @@ export default function Backup() {
                 <li>Tous les paiements</li>
                 <li>Les paramètres de la société</li>
                 <li>Les compteurs de numérotation</li>
+                <li>Les certificats de garantie</li>
+                <li>Les modèles de certificats</li>
               </ul>
             </div>
             <Button onClick={downloadBackup} className="w-full">

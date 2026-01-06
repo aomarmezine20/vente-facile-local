@@ -90,13 +90,24 @@ export function AppSidebar() {
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarContent>
         {sections
-          .filter(
-            (section) =>
-              !(
-                (section.label === "Tableau de bord" || section.label === "Administration") &&
-                user?.role !== "admin"
-              )
-          )
+          .filter((section) => {
+            // Hide dashboard and admin sections for non-admin users
+            if ((section.label === "Tableau de bord" || section.label === "Administration") && user?.role !== "admin") {
+              return false;
+            }
+            return true;
+          })
+          .map((section) => {
+            // Filter out stock management for non-admin users
+            const filteredItems = section.items.filter((item) => {
+              if (item.url === "/stock" && user?.role !== "admin") {
+                return false;
+              }
+              return true;
+            });
+            return { ...section, items: filteredItems };
+          })
+          .filter((section) => section.items.length > 0)
           .map((section) => (
             <SidebarGroup key={section.label}>
               <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
