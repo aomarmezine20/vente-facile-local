@@ -358,20 +358,21 @@ export default function DocumentView() {
         </CardHeader>
         <CardContent>
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead>Réf.</TableHead>
-                <TableHead>Désignation</TableHead>
-                <TableHead>Qté</TableHead>
-                <TableHead>PU</TableHead>
-                <TableHead>Remise</TableHead>
-                <TableHead>Total</TableHead>
+                <TableHead className="text-primary">Réf.</TableHead>
+                <TableHead className="text-primary">Désignation</TableHead>
+                <TableHead className="text-primary">Qté</TableHead>
+                <TableHead className="text-primary">PU HT</TableHead>
+                <TableHead className="text-primary">Total HT</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {doc.lines.map((l) => {
                 const p = products.find((x) => x.id === l.productId)!;
-                const totalLine = (l.unitPrice - l.remiseAmount) * l.qty;
+                const priceHT = l.unitPrice / 1.2;
+                const remiseHT = (l.remiseAmount || 0) / 1.2;
+                const totalLineHT = (priceHT - remiseHT) * l.qty;
                 return (
                   <TableRow key={l.id}>
                     <TableCell>{p.sku}</TableCell>
@@ -393,26 +394,45 @@ export default function DocumentView() {
                         )}
                         <div>
                           <div className="font-medium">{l.description}</div>
-                          <div className="text-sm text-muted-foreground">Réf: {p.sku}</div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>{l.qty}</TableCell>
-                    <TableCell>{fmtMAD(l.unitPrice)}</TableCell>
-                    <TableCell>{fmtMAD(l.remiseAmount)}</TableCell>
-                    <TableCell>{fmtMAD(totalLine)}</TableCell>
+                    <TableCell>{fmtMAD(priceHT)}</TableCell>
+                    <TableCell>{fmtMAD(totalLineHT)}</TableCell>
                   </TableRow>
                 );
               })}
             </TableBody>
           </Table>
-          <div className="mt-4 text-right space-y-1">
-            <div className="text-sm text-muted-foreground">Total HT: {fmtMAD(totalHT)}</div>
-            {doc.includeTVA && (
-              <div className="text-sm text-muted-foreground">TVA 20%: {fmtMAD(tvaAmount)}</div>
-            )}
-            <div className="text-lg font-semibold">
-              Total {doc.includeTVA ? "TTC" : "HT"}: {fmtMAD(doc.includeTVA ? totalTTC : totalHT)}
+          
+          {/* Styled Totals Section */}
+          <div className="mt-4 space-y-2">
+            <div className="flex justify-end">
+              <div className="w-full max-w-md space-y-2">
+                <div className="flex justify-between py-2 px-4 bg-muted/30 rounded">
+                  <span className="text-muted-foreground font-medium">Total H.T (HR)</span>
+                  <span className="font-semibold">{fmtMAD(totalHT + (doc.lines.reduce((s, l) => s + (l.remiseAmount || 0) / 1.2 * l.qty, 0)))}</span>
+                </div>
+                <div className="flex justify-between py-2 px-4">
+                  <span className="text-muted-foreground font-medium">Remise H.T</span>
+                  <span>{fmtMAD(doc.lines.reduce((s, l) => s + (l.remiseAmount || 0) / 1.2 * l.qty, 0))}</span>
+                </div>
+                <div className="flex justify-between py-2 px-4 bg-muted/30 rounded">
+                  <span className="text-muted-foreground font-medium">Total H.T (NET)</span>
+                  <span className="font-semibold">{fmtMAD(totalHT)}</span>
+                </div>
+                {doc.includeTVA && (
+                  <div className="flex justify-between py-2 px-4">
+                    <span className="text-muted-foreground font-medium">T.V.A (20%)</span>
+                    <span>{fmtMAD(tvaAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between py-3 px-4 bg-primary/10 rounded-lg border border-primary/20">
+                  <span className="font-bold text-primary">NET A PAYER {doc.includeTVA ? "T.T.C" : "H.T"}</span>
+                  <span className="font-bold text-primary">{fmtMAD(doc.includeTVA ? totalTTC : totalHT)}</span>
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>

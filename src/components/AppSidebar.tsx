@@ -69,6 +69,7 @@ const sections = [
     items: [
       { title: "Catalogue", url: "/products", icon: ShoppingBag },
       { title: "Gestion des produits", url: "/product-manager", icon: Package, adminOnly: true },
+      { title: "Gestion des dépôts", url: "/depots", icon: Warehouse, adminOnly: true },
       { title: "Gestion des stocks", url: "/stock", icon: Warehouse, adminOnly: true },
     ],
   },
