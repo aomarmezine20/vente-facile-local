@@ -194,6 +194,12 @@ export function upsertDepot(d: Depot) {
   });
 }
 
+export function deleteDepot(depotId: string) {
+  setDB((db) => {
+    db.depots = db.depots.filter((d) => d.id !== depotId);
+  });
+}
+
 export function getClients(): Client[] { return getDB().clients; }
 export function upsertClient(c: Client) {
   setDB((db) => {

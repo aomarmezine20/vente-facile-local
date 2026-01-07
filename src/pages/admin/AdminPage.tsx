@@ -165,7 +165,6 @@ export default function AdminPage() {
         <Tabs value={tab} onValueChange={onTabChange} className="w-full">
           <TabsList>
             <TabsTrigger value="societe">Société</TabsTrigger>
-            <TabsTrigger value="depots">Dépôts</TabsTrigger>
             <TabsTrigger value="utilisateurs">Utilisateurs</TabsTrigger>
             <TabsTrigger value="counters">Compteurs</TabsTrigger>
           </TabsList>
@@ -244,114 +243,6 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="depots">
-          <Card>
-            <CardHeader className="flex items-center justify-between">
-              <CardTitle>Dépôts</CardTitle>
-              <Button onClick={addDepot}>Ajouter</Button>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nom</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {depots.map((d) => (
-                    <TableRow key={d.id}>
-                      <TableCell>
-                        <Input value={d.name} onChange={(e) => { d.name = e.target.value; upsertDepot(d); setDepots(getDepots()); }} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              <div className="mt-6">
-                <h3 className="mb-2 text-sm font-medium">Stocks par dépôt</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Dépôt</TableHead>
-                      <TableHead>Réf.</TableHead>
-                      <TableHead>Article</TableHead>
-                      <TableHead>Qté actuelle</TableHead>
-                      <TableHead>Ajuster stock</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getStock().map((s) => {
-                      const depot = depots.find((d) => d.id === s.depotId)?.name || s.depotId;
-                      const prod = products.find((p) => p.id === s.productId);
-                      return (
-                        <TableRow key={`${s.depotId}-${s.productId}`}>
-                          <TableCell>{depot}</TableCell>
-                          <TableCell>{prod?.sku || s.productId}</TableCell>
-                          <TableCell className="flex items-center gap-2">
-                            {prod?.imageDataUrl && (
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <img src={prod.imageDataUrl} alt={prod.name} className="h-12 w-12 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity" />
-                                </DialogTrigger>
-                                <DialogContent className="max-w-2xl">
-                                  <img src={prod.imageDataUrl} alt={prod.name} className="w-full h-auto rounded-lg" />
-                                  <div className="text-center mt-2">
-                                    <h3 className="font-semibold">{prod.name}</h3>
-                                    <p className="text-sm text-muted-foreground">Référence: {prod.sku}</p>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
-                            )}
-                            <span>{prod?.name || "-"}</span>
-                          </TableCell>
-                          <TableCell className="font-medium">{s.qty}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="number"
-                                placeholder="+/-"
-                                className="w-20"
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    const input = e.target as HTMLInputElement;
-                                    const delta = parseInt(input.value);
-                                    if (delta && delta !== 0) {
-                                      adjustStock(s.depotId, s.productId, delta);
-                                      toast.success(`Stock ajusté: ${delta > 0 ? '+' : ''}${delta} unités pour ${prod?.name}`);
-                                      input.value = '';
-                                      window.location.reload();
-                                    }
-                                  }
-                                }}
-                              />
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => {
-                                  const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                                  const delta = parseInt(input.value);
-                                  if (delta && delta !== 0) {
-                                    adjustStock(s.depotId, s.productId, delta);
-                                    toast.success(`Stock ajusté: ${delta > 0 ? '+' : ''}${delta} unités pour ${prod?.name}`);
-                                    input.value = '';
-                                    window.location.reload();
-                                  }
-                                }}
-                              >
-                                OK
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="utilisateurs">
           <Card>
