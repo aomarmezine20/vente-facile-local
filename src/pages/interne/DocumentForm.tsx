@@ -88,7 +88,7 @@ export default function InterneDocumentForm() {
     };
     upsertDocument(doc);
     toast({ title: "Devis interne enregistré", description: code });
-    navigate(`/document/${id}`);
+    navigate(`/interne/document/${id}`);
   };
 
   return (
