@@ -7,15 +7,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { getClients, upsertClient, nextClientCode } from "@/store/localdb";
+import { getClients, upsertClient, nextClientCode, deleteClient, getCurrentUser } from "@/store/localdb";
 import { Client, ClientType } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2 } from "lucide-react";
+import { SearchInput } from "@/components/SearchInput";
 
 export default function ClientManager() {
   const [clients, setClients] = useState(getClients());
   const [isOpen, setIsOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     type: "particulier" as ClientType,
@@ -25,6 +27,20 @@ export default function ClientManager() {
     taxId: "",
     ice: "",
     notes: ""
+  });
+
+  const currentUser = getCurrentUser();
+  const isAdmin = currentUser?.role === "admin";
+
+  const filteredClients = clients.filter((c) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(term) ||
+      c.code.toLowerCase().includes(term) ||
+      c.email?.toLowerCase().includes(term) ||
+      c.phone?.toLowerCase().includes(term)
+    );
   });
 
   const resetForm = () => {
@@ -72,6 +88,10 @@ export default function ClientManager() {
   };
 
   const handleEdit = (client: Client) => {
+    if (!isAdmin) {
+      toast({ title: "Accès refusé", description: "Seul l'administrateur peut modifier les clients.", variant: "destructive" });
+      return;
+    }
     setEditingClient(client);
     setFormData({
       name: client.name,
@@ -86,9 +106,15 @@ export default function ClientManager() {
     setIsOpen(true);
   };
 
-  const handleDelete = (clientId: string) => {
-    // In a real app, we'd implement delete functionality
-    toast({ title: "Suppression non implémentée", description: "La suppression sera ajoutée prochainement" });
+  const handleDelete = (client: Client) => {
+    if (!isAdmin) {
+      toast({ title: "Accès refusé", description: "Seul l'administrateur peut supprimer des clients.", variant: "destructive" });
+      return;
+    }
+    
+    deleteClient(client.id);
+    setClients(getClients());
+    toast({ title: "Client supprimé", description: `${client.name} a été supprimé.` });
   };
 
   return (
@@ -212,7 +238,20 @@ export default function ClientManager() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Liste des clients ({clients.length})</CardTitle>
+          <CardTitle>Recherche</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Rechercher par nom, code, email ou téléphone..."
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Liste des clients ({filteredClients.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex justify-center">
@@ -229,7 +268,7 @@ export default function ClientManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-              {clients.map((client) => (
+              {filteredClients.map((client) => (
                   <TableRow key={client.id}>
                     <TableCell className="font-mono text-sm">{client.code}</TableCell>
                     <TableCell className="font-medium">{client.name}</TableCell>
@@ -243,20 +282,27 @@ export default function ClientManager() {
                     <TableCell className="max-w-xs truncate">{client.address || "-"}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(client)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(client.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {isAdmin && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(client)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(client)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        )}
+                        {!isAdmin && (
+                          <span className="text-sm text-muted-foreground">Lecture seule</span>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

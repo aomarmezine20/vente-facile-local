@@ -122,7 +122,7 @@ export default function InterneDocumentsList({ type }: { type: DocType }) {
     }
 
     toast({ title: `Transformé en ${t}`, description: `Document ${newDoc.code} créé.` });
-    navigate(`/document/${newDoc.id}`);
+    navigate(`/interne/document/${newDoc.id}`);
   };
 
   const createBRFromBL = (doc: Document) => {
@@ -135,7 +135,7 @@ export default function InterneDocumentsList({ type }: { type: DocType }) {
       for (const l of doc.lines) adjustStock(doc.depotId, l.productId, l.qty);
     }
     toast({ title: "Bon de retour créé", description: br.code });
-    navigate(`/document/${br.id}`);
+    navigate(`/interne/document/${br.id}`);
   };
 
   const handleDelete = (doc: Document) => {
@@ -256,7 +256,7 @@ export default function InterneDocumentsList({ type }: { type: DocType }) {
                     <TableCell>{fmtMAD(total)}</TableCell>
                     <TableCell className="space-x-2">
                       <Button variant="secondary" size="sm" asChild>
-                        <Link to={`/document/${d.id}`}>Voir</Link>
+                        <Link to={`/interne/document/${d.id}`}>Voir</Link>
                       </Button>
                       {nextType(d.type) && !transformed && (
                         <Button size="sm" onClick={() => transform(d)}>
