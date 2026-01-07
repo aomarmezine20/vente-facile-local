@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { adjustStock, getClients, getDepots, getDocument, getProducts, nextCode, upsertDocument, getDocuments } from "@/store/localdb";
 import { Document, DocType, DocumentStatus } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
@@ -14,8 +14,8 @@ import { generateDocumentPdf } from "@/pdf/pdf";
 import { generateCertificatePdf } from "@/pdf/warranty";
 import { toast } from "@/hooks/use-toast";
 import { PaymentManager } from "@/components/PaymentManager";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { FileText, Printer, ArrowLeft } from "lucide-react";
 
 function nextType(t: DocType): DocType | null {
   if (t === "DV") return "BC";
@@ -24,12 +24,12 @@ function nextType(t: DocType): DocType | null {
   return null;
 }
 
-// Certificate Section Component
+// Certificate Section Component with green design
 function CertificateSection({ doc, clients, products }: { doc: Document; clients: any[]; products: any[] }) {
   const [clientType, setClientType] = useState<"revendeur" | "particulier" | "entreprise">("particulier");
   const [isGenerating, setIsGenerating] = useState(false);
 
-  if (doc.type !== "FA" || doc.mode !== "vente") return null;
+  if (doc.type !== "FA") return null;
 
   const client = doc.clientId ? clients.find(c => c.id === doc.clientId) : null;
   const productTypes = doc.lines
@@ -49,7 +49,6 @@ function CertificateSection({ doc, clients, products }: { doc: Document; clients
       const newCertificates: any[] = [];
 
       if (clientType === "revendeur") {
-        // For revendeur: generate 1 certificate per article
         for (let i = 0; i < totalQty; i++) {
           const timestamp = Date.now() + i;
           const certificateId = `SE-${doc.code}-${timestamp.toString().slice(-6)}`;
@@ -71,7 +70,6 @@ function CertificateSection({ doc, clients, products }: { doc: Document; clients
           await generateCertificatePdf(doc, cert, templateUrl);
         }
       } else {
-        // For particulier and entreprise: generate 1 certificate for ALL articles
         const timestamp = Date.now();
         const certificateId = `SE-${doc.code}-${timestamp.toString().slice(-6)}`;
         
@@ -94,9 +92,8 @@ function CertificateSection({ doc, clients, products }: { doc: Document; clients
 
       localStorage.setItem("certificates", JSON.stringify([...existingCerts, ...newCertificates]));
       
-      const numCertificates = newCertificates.length;
       toast({ 
-        title: `${numCertificates} certificat(s) généré(s)`, 
+        title: `${newCertificates.length} certificat(s) généré(s)`, 
         description: `Type: ${clientType}`,
         duration: 5000
       });
@@ -112,16 +109,19 @@ function CertificateSection({ doc, clients, products }: { doc: Document; clients
   };
 
   return (
-    <Card>
+    <Card className="border-green-200 bg-green-50/50">
       <CardHeader>
-        <CardTitle>Certificat de garantie</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-green-800">
+          <FileText className="h-5 w-5" />
+          Certificats de garantie
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="space-y-1">
-            <Label className="text-xs">Type de client</Label>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <Label className="text-sm font-medium text-green-800">Type de client pour le certificat:</Label>
             <Select value={clientType} onValueChange={(v: any) => setClientType(v)}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -131,21 +131,20 @@ function CertificateSection({ doc, clients, products }: { doc: Document; clients
               </SelectContent>
             </Select>
           </div>
-          
           <Button 
-            variant="outline" 
             onClick={handleGenerate}
             disabled={isGenerating}
+            className="bg-green-600 hover:bg-green-700"
           >
-            {isGenerating ? "Génération..." : "Générer certificat"}
+            <Printer className="mr-2 h-4 w-4" />
+            {isGenerating ? "Génération..." : "Générer les certificats"}
           </Button>
-          
-          <span className="text-xs text-muted-foreground">
-            {clientType === "revendeur" 
-              ? `${totalQty} certificat(s) seront générés (1 par article)`
-              : `1 certificat sera généré (${totalQty} articles)`}
-          </span>
         </div>
+        <p className="text-sm text-green-700">
+          {clientType === "revendeur" 
+            ? `${totalQty} certificat(s) seront générés (1 par article)`
+            : `1 certificat sera généré pour ${totalQty} article(s)`}
+        </p>
       </CardContent>
     </Card>
   );
@@ -249,6 +248,15 @@ export default function DocumentView() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Button variant="ghost" size="sm" asChild>
+          <Link to={`/ventes/${doc.type === "FA" ? "factures" : doc.type === "BL" ? "bl" : doc.type === "BC" ? "bc" : doc.type === "BR" ? "br" : "devis"}`}>
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Retour
+          </Link>
+        </Button>
+      </div>
+
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">
           {doc.type} — {doc.code}
@@ -291,72 +299,50 @@ export default function DocumentView() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Informations</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div>
-            <div className="text-sm text-muted-foreground">Date</div>
-            <div>{new Date(doc.date).toLocaleDateString()}</div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground">{doc.mode === "vente" ? "Client" : "Fournisseur"}</div>
-            <div>{client}</div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground">Dépôt</div>
-            <div>{depot}</div>
-          </div>
-          {/* TVA checkbox - available for all document types */}
-          <div className="md:col-span-3 space-y-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="includeTVA"
-                checked={doc.includeTVA ?? false}
-                onCheckedChange={(checked) => {
-                  upsertDocument({ ...doc, includeTVA: checked === true });
-                  toast({ 
-                    title: checked ? "TVA incluse" : "TVA exclue",
-                    description: checked 
-                      ? `TVA 20% sera ajoutée au PDF`
-                      : "Le total sera calculé hors taxes"
-                  });
-                }}
-              />
-              <Label htmlFor="includeTVA" className="text-sm cursor-pointer">
-                Inclure la TVA (20%) dans le PDF
-                <span className="block text-xs text-muted-foreground">
-                  Afficher le total H.T, TVA et TTC sur le document
-                </span>
-              </Label>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Date</p>
+              <p>{new Date(doc.date).toLocaleDateString()}</p>
             </div>
-            
-            {doc.type === "FA" && doc.mode === "vente" && doc.clientId && (
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="includeInAccounting"
-                  checked={doc.includeInAccounting ?? true}
-                  onCheckedChange={(checked) => {
-                    upsertDocument({ ...doc, includeInAccounting: checked === true });
-                    toast({ 
-                      title: checked ? "Inclure en comptabilité" : "Exclure de la comptabilité",
-                      description: checked 
-                        ? "Cette facture sera incluse dans les rapports comptables"
-                        : "Cette facture sera exclue des rapports comptables"
-                    });
-                  }}
-                />
-                <Label htmlFor="includeInAccounting" className="text-sm cursor-pointer">
-                  Inclure cette facture en comptabilité
-                  <span className="block text-xs text-muted-foreground">
-                    {clients.find(c => c.id === doc.clientId)?.type === "particulier" 
-                      ? "Pour les particuliers qui demandent une facture officielle"
-                      : "Pour toutes les factures entreprises"}
-                  </span>
-                </Label>
-              </div>
-            )}
+            <div>
+              <p className="text-sm text-muted-foreground">{doc.mode === "vente" ? "Client" : "Fournisseur"}</p>
+              <p>{client}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Dépôt</p>
+              <p>{depot}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground">Inclure TVA (20%):</p>
+              <Switch 
+                checked={doc.includeTVA || false} 
+                onCheckedChange={(checked) => {
+                  upsertDocument({ ...doc, includeTVA: checked });
+                  toast({ 
+                    title: checked ? "TVA activée" : "TVA désactivée"
+                  });
+                }} 
+              />
+            </div>
           </div>
+          {doc.type === "FA" && doc.mode === "vente" && doc.clientId && (
+            <div className="flex items-center gap-2 pt-2 border-t">
+              <p className="text-sm text-muted-foreground">Inclure en comptabilité:</p>
+              <Switch 
+                checked={doc.includeInAccounting ?? true} 
+                onCheckedChange={(checked) => {
+                  upsertDocument({ ...doc, includeInAccounting: checked });
+                  toast({ 
+                    title: checked ? "Inclure en comptabilité" : "Exclure de la comptabilité"
+                  });
+                }} 
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

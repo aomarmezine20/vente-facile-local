@@ -5,12 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { getProducts, upsertProduct, getDB, setDB, getCurrentUser, getStock, deleteStockItem, getDepots } from "@/store/localdb";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getProducts, upsertProduct, getDB, setDB, getCurrentUser, getStock, deleteStockItem, getDepots, adjustStock } from "@/store/localdb";
 import { Product } from "@/types";
 import { fmtMAD } from "@/utils/format";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Upload, Image, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Image, Search, Warehouse } from "lucide-react";
 import { SearchInput } from "@/components/SearchInput";
+
+interface DepotStock {
+  depotId: string;
+  qty: number;
+}
 
 export default function ProductManager() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -25,6 +31,7 @@ export default function ProductManager() {
     category: "",
     imageDataUrl: "",
   });
+  const [depotStocks, setDepotStocks] = useState<DepotStock[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentUser = getCurrentUser();
@@ -53,6 +60,7 @@ export default function ProductManager() {
       category: "",
       imageDataUrl: "",
     });
+    setDepotStocks([]);
     setEditingProduct(null);
   };
 
@@ -66,6 +74,9 @@ export default function ProductManager() {
       category: product.category || "",
       imageDataUrl: product.imageDataUrl || "",
     });
+    // Load existing stock for this product
+    const productStock = stock.filter(s => s.productId === product.id);
+    setDepotStocks(productStock.map(s => ({ depotId: s.depotId, qty: s.qty })));
     setDialogOpen(true);
   };
 
@@ -126,6 +137,27 @@ export default function ProductManager() {
     };
 
     upsertProduct(product);
+    
+    // Update stock for each depot
+    if (!editingProduct) {
+      // For new products, set stock directly
+      depotStocks.forEach(ds => {
+        if (ds.qty > 0) {
+          adjustStock(ds.depotId, product.id, ds.qty);
+        }
+      });
+    } else {
+      // For existing products, calculate delta
+      depotStocks.forEach(ds => {
+        const currentStock = stock.find(s => s.productId === product.id && s.depotId === ds.depotId);
+        const currentQty = currentStock?.qty || 0;
+        const delta = ds.qty - currentQty;
+        if (delta !== 0) {
+          adjustStock(ds.depotId, product.id, delta);
+        }
+      });
+    }
+
     toast({ 
       title: editingProduct ? "Produit modifié" : "Produit ajouté", 
       description: `${product.name} a été ${editingProduct ? "modifié" : "ajouté"}.` 
@@ -241,6 +273,48 @@ export default function ProductManager() {
                   />
                 )}
               </div>
+              
+              {/* Depot Stock Section */}
+              <div className="col-span-2 space-y-2 border-t pt-4">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Warehouse className="h-4 w-4" />
+                  Stock par dépôt
+                </label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {depots.map((depot) => {
+                    const depotStock = depotStocks.find(ds => ds.depotId === depot.id);
+                    const currentQty = depotStock?.qty ?? 0;
+                    return (
+                      <div key={depot.id} className="flex items-center justify-between gap-4 p-3 border rounded-lg bg-muted/30">
+                        <span className="font-medium">{depot.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">Qté:</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={currentQty}
+                            onChange={(e) => {
+                              const newQty = parseInt(e.target.value) || 0;
+                              setDepotStocks(prev => {
+                                const existing = prev.find(ds => ds.depotId === depot.id);
+                                if (existing) {
+                                  return prev.map(ds => ds.depotId === depot.id ? { ...ds, qty: newQty } : ds);
+                                } else {
+                                  return [...prev, { depotId: depot.id, qty: newQty }];
+                                }
+                              });
+                            }}
+                            className="w-24"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Définissez la quantité de stock pour chaque dépôt
+                </p>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>
@@ -281,13 +355,15 @@ export default function ProductManager() {
                 <TableHead>Catégorie</TableHead>
                 <TableHead>Unité</TableHead>
                 <TableHead className="text-right">Prix</TableHead>
-                <TableHead className="text-center">Stock Total</TableHead>
+                <TableHead>Stock par dépôt</TableHead>
+                <TableHead className="text-center">Total</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProducts.map((product) => {
                 const totalStock = getTotalStock(product.id);
+                const productStockByDepot = stock.filter(s => s.productId === product.id);
                 return (
                   <TableRow key={product.id}>
                     <TableCell>
@@ -321,6 +397,22 @@ export default function ProductManager() {
                     </TableCell>
                     <TableCell>{product.unit}</TableCell>
                     <TableCell className="text-right">{fmtMAD(product.price)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {productStockByDepot.length > 0 ? (
+                          productStockByDepot.map(s => {
+                            const depot = depots.find(d => d.id === s.depotId);
+                            return (
+                              <Badge key={s.depotId} variant={s.qty > 0 ? "secondary" : "destructive"} className="text-xs">
+                                {depot?.name}: {s.qty}
+                              </Badge>
+                            );
+                          })
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Aucun stock</span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-center">
                       <Badge variant={totalStock > 0 ? "default" : "destructive"}>
                         {totalStock}
@@ -341,7 +433,7 @@ export default function ProductManager() {
               })}
               {filteredProducts.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Aucun produit trouvé
                   </TableCell>
                 </TableRow>
