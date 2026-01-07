@@ -214,7 +214,8 @@ export default function DocumentView() {
 
     if (t === "BL" && doc.depotId) {
       for (const l of doc.lines) {
-        const delta = doc.mode === "vente" ? -l.qty : l.qty;
+        // vente and interne both reduce stock, only achat adds stock
+        const delta = doc.mode === "achat" ? l.qty : -l.qty;
         adjustStock(doc.depotId, l.productId, delta);
       }
     }

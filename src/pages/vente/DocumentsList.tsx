@@ -114,10 +114,10 @@ export default function DocumentsList({ mode, type }: { mode: Mode; type: DocTyp
     const updatedOriginal = { ...doc, status };
     upsertDocument(updatedOriginal);
 
-    // Stock movement on BL
+    // Stock movement on BL - vente and interne reduce stock, achat adds stock
     if (t === "BL" && doc.depotId) {
       for (const l of doc.lines) {
-        const delta = doc.mode === "vente" ? -l.qty : l.qty;
+        const delta = doc.mode === "achat" ? l.qty : -l.qty;
         adjustStock(doc.depotId, l.productId, delta);
       }
     }
