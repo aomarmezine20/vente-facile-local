@@ -16,9 +16,11 @@ import AchatDocumentsList from "./pages/achat/DocumentsList";
 import AchatDocumentForm from "./pages/achat/DocumentForm";
 import InterneDocumentsList from "./pages/interne/DocumentsList";
 import InterneDocumentForm from "./pages/interne/DocumentForm";
+import InterneDocumentView from "./pages/interne/DocumentView";
 import AdminPage from "./pages/admin/AdminPage";
 import StockManager from "./pages/StockManager";
 import ProductsCatalog from "./pages/ProductsCatalog";
+import ProductManager from "./pages/ProductManager";
 import ClientManager from "./pages/ClientManager";
 import Reports from "./pages/Reports";
 import Comptabilite from "./pages/Comptabilite";
@@ -86,10 +88,12 @@ const App = () => {
                     <Route path="/interne/bl" element={<InterneDocumentsList type="BL" />} />
                     <Route path="/interne/br" element={<InterneDocumentsList type="BR" />} />
                     <Route path="/interne/factures" element={<InterneDocumentsList type="FA" />} />
+                    <Route path="/interne/document/:id" element={<InterneDocumentView />} />
 
                     {/* Stock management & Products */}
                     <Route path="/stock" element={<StockManager />} />
                     <Route path="/products" element={<ProductsCatalog />} />
+                    <Route path="/product-manager" element={<ProductManager />} />
                     <Route path="/clients" element={<ClientManager />} />
 
                     {/* Document detail (commun) */}

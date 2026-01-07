@@ -203,6 +203,20 @@ export function upsertClient(c: Client) {
   });
 }
 
+export function deleteClient(clientId: string) {
+  setDB((db) => {
+    db.clients = db.clients.filter((c) => c.id !== clientId);
+  });
+}
+
+export function deleteProduct(productId: string) {
+  setDB((db) => {
+    db.products = db.products.filter((p) => p.id !== productId);
+    // Also remove stock entries for this product
+    db.stock = db.stock.filter((s) => s.productId !== productId);
+  });
+}
+
 export function getCompany(): Company { return getDB().company; }
 export function setCompany(company: Company) { setDB((db) => { db.company = company; }); }
 
