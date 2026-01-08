@@ -180,6 +180,12 @@ export default function DocumentView() {
 
   if (!doc) return <div>Document introuvable.</div>;
 
+  // Redirect interne documents to the interne view
+  if (doc.mode === "interne") {
+    navigate(`/interne/document/${id}`, { replace: true });
+    return null;
+  }
+
   // Check if document has already been transformed
   const hasBeenTransformed = getDocuments().some(d => d.refFromId === doc.id);
   const canTransform = nextType(doc.type) && !hasBeenTransformed;
