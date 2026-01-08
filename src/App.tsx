@@ -22,6 +22,7 @@ import StockManager from "./pages/StockManager";
 import ProductsCatalog from "./pages/ProductsCatalog";
 import ProductManager from "./pages/ProductManager";
 import DepotManager from "./pages/DepotManager";
+import StockTransfer from "./pages/StockTransfer";
 import ClientManager from "./pages/ClientManager";
 import Reports from "./pages/Reports";
 import Comptabilite from "./pages/Comptabilite";
@@ -93,6 +94,7 @@ const App = () => {
 
                     {/* Stock management & Products */}
                     <Route path="/stock" element={<StockManager />} />
+                    <Route path="/stock-transfer" element={<StockTransfer />} />
                     <Route path="/products" element={<ProductsCatalog />} />
                     <Route path="/product-manager" element={<ProductManager />} />
                     <Route path="/depots" element={<DepotManager />} />

@@ -13,6 +13,7 @@ import {
   Database,
   Award,
   AlertTriangle,
+  ArrowRightLeft,
 } from "lucide-react";
 import {
   Sidebar,
@@ -68,6 +69,7 @@ const sections = [
     label: "Stocks",
     items: [
       { title: "Catalogue", url: "/products", icon: ShoppingBag },
+      { title: "Transfert de stock", url: "/stock-transfer", icon: ArrowRightLeft },
       { title: "Gestion des produits", url: "/product-manager", icon: Package, adminOnly: true },
       { title: "Gestion des dépôts", url: "/depots", icon: Warehouse, adminOnly: true },
       { title: "Gestion des stocks", url: "/stock", icon: Warehouse, adminOnly: true },
