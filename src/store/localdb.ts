@@ -100,29 +100,50 @@ export function seedIfNeeded(seedFn: () => AppDB) {
 
 export function nextCode(mode: Mode, type: DocType, clientType?: "particulier" | "entreprise"): string {
   const year = new Date().getFullYear().toString().slice(-2); // Get last 2 digits of year (e.g., "26")
+  const db = getDB();
   
-  // For internal mode, use I prefix with separate counter
+  // For internal mode, use I prefix
   if (mode === "interne") {
-    const key = `interne-${type}-${year}`;
-    let code = "";
-    setDB((db) => {
-      const n = (db.counters[key] ?? 0) + 1;
-      db.counters[key] = n;
-      code = `I-${type}${year}-${n.toString().padStart(5, "0")}`;
-    });
-    return code;
+    const prefix = "I";
+    // Find all existing codes for this mode/type/year
+    const existingNumbers = db.documents
+      .filter(d => d.mode === mode && d.type === type && d.code.includes(`${type}${year}`))
+      .map(d => {
+        const match = d.code.match(/-(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .sort((a, b) => a - b);
+    
+    // Find first available number (fill gaps or use next)
+    let n = 1;
+    for (const num of existingNumbers) {
+      if (num === n) n++;
+      else if (num > n) break;
+    }
+    
+    return `${prefix}-${type}${year}-${n.toString().padStart(5, "0")}`;
   }
   
   // Unified ID format for vente/achat - no P/E distinction, includes year
   const prefix = mode === "vente" ? "V" : "A";
-  const key = `${mode}-${type}-${year}`;
-  let code = "";
-  setDB((db) => {
-    const n = (db.counters[key] ?? 0) + 1;
-    db.counters[key] = n;
-    code = `${prefix}-${type}${year}-${n.toString().padStart(5, "0")}`;
-  });
-  return code;
+  
+  // Find all existing codes for this mode/type/year
+  const existingNumbers = db.documents
+    .filter(d => d.mode === mode && d.type === type && d.code.includes(`${type}${year}`))
+    .map(d => {
+      const match = d.code.match(/-(\d+)$/);
+      return match ? parseInt(match[1], 10) : 0;
+    })
+    .sort((a, b) => a - b);
+  
+  // Find first available number (fill gaps or use next)
+  let n = 1;
+  for (const num of existingNumbers) {
+    if (num === n) n++;
+    else if (num > n) break;
+  }
+  
+  return `${prefix}-${type}${year}-${n.toString().padStart(5, "0")}`;
 }
 
 // Generate next client code
