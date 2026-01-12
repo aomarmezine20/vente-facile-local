@@ -28,12 +28,14 @@ export default function Backup() {
       // Get certificates from localStorage
       const certificates = JSON.parse(localStorage.getItem("certificates") || "[]");
       const certificateTemplates = JSON.parse(localStorage.getItem("certificateTemplates") || "[]");
+      const stockTransfers = JSON.parse(localStorage.getItem("stock-transfers") || "[]");
       
       // Add complete database as JSON - includes EVERYTHING
       const fullBackup = {
         ...db,
         certificates,
         certificateTemplates,
+        stockTransfers,
       };
       zip.file("database.json", JSON.stringify(fullBackup, null, 2));
       
@@ -49,11 +51,12 @@ export default function Backup() {
       zip.file("counters.json", JSON.stringify(db.counters, null, 2));
       zip.file("certificates.json", JSON.stringify(certificates, null, 2));
       zip.file("certificateTemplates.json", JSON.stringify(certificateTemplates, null, 2));
+      zip.file("stockTransfers.json", JSON.stringify(stockTransfers, null, 2));
       
       // Add a manifest with backup info
       const manifest = {
         backupDate: new Date().toISOString(),
-        version: "1.0",
+        version: "1.1",
         stats: {
           clients: db.clients.length,
           products: db.products.length,
@@ -62,6 +65,7 @@ export default function Backup() {
           payments: db.payments.length,
           users: db.users.length,
           stockItems: db.stock.length,
+          stockTransfers: stockTransfers.length,
         }
       };
       zip.file("manifest.json", JSON.stringify(manifest, null, 2));
@@ -125,6 +129,10 @@ export default function Backup() {
       if (newDB.certificateTemplates) {
         localStorage.setItem("certificateTemplates", JSON.stringify(newDB.certificateTemplates));
         delete newDB.certificateTemplates;
+      }
+      if (newDB.stockTransfers) {
+        localStorage.setItem("stock-transfers", JSON.stringify(newDB.stockTransfers));
+        delete newDB.stockTransfers;
       }
       
       // Restore to localStorage
@@ -254,6 +262,7 @@ export default function Backup() {
                 <li>Les compteurs de numérotation</li>
                 <li>Les certificats de garantie</li>
                 <li>Les modèles de certificats</li>
+                <li>Les transferts de stock</li>
               </ul>
             </div>
             <Button onClick={downloadBackup} className="w-full">
