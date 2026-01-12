@@ -7,14 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getDocument, getProducts, getClients, getDepots, upsertDocument, getDB, nextCode, adjustStock, getCurrentUser } from "@/store/localdb";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { getDocument, getProducts, getClients, getDepots, upsertDocument, getDB, nextCode, adjustStock, getCurrentUser, deleteDocument } from "@/store/localdb";
 import { Document, DocumentStatus, DocType } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
 import { generateCertificatePdf } from "@/pdf/warranty";
 import { toast } from "@/hooks/use-toast";
 import { PaymentManager } from "@/components/PaymentManager";
-import { AlertTriangle, ArrowLeft, FileText, Printer } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, Printer, Trash2 } from "lucide-react";
 
 type CertClientType = "revendeur" | "particulier" | "entreprise";
 
@@ -313,6 +314,37 @@ export default function InterneDocumentView() {
             <Button variant="outline" onClick={() => generateDocumentPdf(doc).catch(console.error)}>
               PDF
             </Button>
+            {isAdmin && !transformed && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Supprimer
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Êtes-vous sûr de vouloir supprimer le document {doc.code} ? Cette action est irréversible.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => {
+                        deleteDocument(doc.id);
+                        toast({ title: "Document supprimé", description: `Le document ${doc.code} a été supprimé.` });
+                        navigate(`/interne/${doc.type === "FA" ? "factures" : doc.type === "BL" ? "bl" : doc.type === "BC" ? "bc" : "devis"}`);
+                      }}
+                    >
+                      Supprimer
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
