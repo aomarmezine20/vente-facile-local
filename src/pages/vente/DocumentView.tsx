@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { adjustStock, getClients, getDepots, getDocument, getProducts, nextCode, upsertDocument, getDocuments } from "@/store/localdb";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { adjustStock, getClients, getDepots, getDocument, getProducts, nextCode, upsertDocument, getDocuments, getCurrentUser, deleteDocument } from "@/store/localdb";
 import { Document, DocType, DocumentStatus } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
@@ -15,7 +16,7 @@ import { generateCertificatePdf } from "@/pdf/warranty";
 import { toast } from "@/hooks/use-toast";
 import { PaymentManager } from "@/components/PaymentManager";
 import { Label } from "@/components/ui/label";
-import { FileText, Printer, ArrowLeft } from "lucide-react";
+import { FileText, Printer, ArrowLeft, Trash2 } from "lucide-react";
 
 function nextType(t: DocType): DocType | null {
   if (t === "DV") return "BC";
@@ -157,6 +158,8 @@ export default function DocumentView() {
   const products = getProducts();
   const clients = getClients();
   const depots = getDepots();
+  const currentUser = getCurrentUser();
+  const isAdmin = currentUser?.role === "admin";
 
   // MANDATORY CALCULATION RULES:
   // 1) All prices entered are TTC, all remises are TTC
@@ -302,6 +305,37 @@ export default function DocumentView() {
           <Button variant="outline" onClick={() => generateDocumentPdf(doc).catch(console.error)}>
             PDF
           </Button>
+          {isAdmin && !hasBeenTransformed && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Supprimer
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Êtes-vous sûr de vouloir supprimer le document {doc.code} ? Cette action est irréversible.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => {
+                      deleteDocument(doc.id);
+                      toast({ title: "Document supprimé", description: `Le document ${doc.code} a été supprimé.` });
+                      navigate(`/${doc.mode}s/${doc.type === "FA" ? "factures" : doc.type === "BL" ? "bl" : doc.type === "BC" ? "bc" : "devis"}`);
+                    }}
+                  >
+                    Supprimer
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
 
