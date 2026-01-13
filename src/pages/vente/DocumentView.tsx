@@ -8,15 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { adjustStock, getClients, getDepots, getDocument, getProducts, nextCode, upsertDocument, getDocuments, getCurrentUser, deleteDocument } from "@/store/localdb";
-import { Document, DocType, DocumentStatus } from "@/types";
+import { Input } from "@/components/ui/input";
+import { adjustStock, getClients, getDepots, getDocument, getProducts, nextCode, upsertDocument, getDocuments, getCurrentUser, deleteDocument, getStock } from "@/store/localdb";
+import { Document, DocType, DocumentStatus, DocumentLine } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
 import { generateCertificatePdf } from "@/pdf/warranty";
 import { toast } from "@/hooks/use-toast";
 import { PaymentManager } from "@/components/PaymentManager";
 import { Label } from "@/components/ui/label";
-import { FileText, Printer, ArrowLeft, Trash2 } from "lucide-react";
+import { FileText, Printer, ArrowLeft, Trash2, Pencil, Plus, X, Save } from "lucide-react";
 
 function nextType(t: DocType): DocType | null {
   if (t === "DV") return "BC";
@@ -154,12 +155,20 @@ function CertificateSection({ doc, clients, products }: { doc: Document; clients
 export default function DocumentView() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const doc = getDocument(id!);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const doc = useMemo(() => getDocument(id!), [id, refreshKey]);
   const products = getProducts();
   const clients = getClients();
   const depots = getDepots();
+  const stock = getStock();
   const currentUser = getCurrentUser();
   const isAdmin = currentUser?.role === "admin";
+
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editLines, setEditLines] = useState<DocumentLine[]>([]);
+  const [newLine, setNewLine] = useState({ productId: "", qty: 1, unitPrice: 0, remiseAmount: 0 });
+  const [productOpen, setProductOpen] = useState(false);
 
   // MANDATORY CALCULATION RULES:
   // 1) All prices entered are TTC, all remises are TTC
@@ -250,7 +259,64 @@ export default function DocumentView() {
     if (doc.type !== "FA") return;
     upsertDocument({ ...doc, status: "comptabilise" });
     toast({ title: "Facture comptabilisée", description: doc.code });
-    navigate(0);
+    setRefreshKey(k => k + 1);
+  };
+
+  // Edit functions (admin only)
+  const startEditing = () => {
+    setEditLines([...doc.lines]);
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setEditLines([]);
+    setNewLine({ productId: "", qty: 1, unitPrice: 0, remiseAmount: 0 });
+    setIsEditing(false);
+  };
+
+  const saveEdits = () => {
+    if (editLines.length === 0) {
+      toast({ title: "Erreur", description: "Le document doit avoir au moins une ligne.", variant: "destructive" });
+      return;
+    }
+    upsertDocument({ ...doc, lines: editLines });
+    toast({ title: "Document modifié", description: `Les modifications ont été enregistrées.` });
+    setIsEditing(false);
+    setRefreshKey(k => k + 1);
+  };
+
+  const updateEditLine = (lineId: string, field: keyof DocumentLine, value: number | string) => {
+    setEditLines(prev => prev.map(l => l.id === lineId ? { ...l, [field]: value } : l));
+  };
+
+  const removeEditLine = (lineId: string) => {
+    setEditLines(prev => prev.filter(l => l.id !== lineId));
+  };
+
+  const addNewLine = () => {
+    if (!newLine.productId) {
+      toast({ title: "Erreur", description: "Veuillez sélectionner un produit.", variant: "destructive" });
+      return;
+    }
+    const product = products.find(p => p.id === newLine.productId);
+    if (!product) return;
+
+    const line: DocumentLine = {
+      id: `line_${Date.now()}`,
+      productId: newLine.productId,
+      description: product.name,
+      qty: newLine.qty,
+      unitPrice: newLine.unitPrice || product.price,
+      remiseAmount: newLine.remiseAmount
+    };
+    setEditLines(prev => [...prev, line]);
+    setNewLine({ productId: "", qty: 1, unitPrice: 0, remiseAmount: 0 });
+    setProductOpen(false);
+  };
+
+  const getProductStock = (productId: string) => {
+    if (!doc.depotId) return 0;
+    return stock.find(s => s.productId === productId && s.depotId === doc.depotId)?.qty || 0;
   };
 
   const client = doc.clientId ? clients.find((c) => c.id === doc.clientId)?.name : doc.vendorName || "-";
@@ -305,7 +371,25 @@ export default function DocumentView() {
           <Button variant="outline" onClick={() => generateDocumentPdf(doc).catch(console.error)}>
             PDF
           </Button>
-          {isAdmin && !hasBeenTransformed && (
+          {isAdmin && !hasBeenTransformed && !isEditing && (
+            <Button variant="outline" size="sm" onClick={startEditing}>
+              <Pencil className="h-4 w-4 mr-1" />
+              Modifier
+            </Button>
+          )}
+          {isEditing && (
+            <>
+              <Button variant="default" size="sm" onClick={saveEdits}>
+                <Save className="h-4 w-4 mr-1" />
+                Enregistrer
+              </Button>
+              <Button variant="outline" size="sm" onClick={cancelEditing}>
+                <X className="h-4 w-4 mr-1" />
+                Annuler
+              </Button>
+            </>
+          )}
+          {isAdmin && !hasBeenTransformed && !isEditing && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm">
@@ -394,8 +478,13 @@ export default function DocumentView() {
       <CertificateSection doc={doc} clients={clients} products={products} />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Lignes</CardTitle>
+          {isEditing && (
+            <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+              Mode édition
+            </Badge>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
@@ -404,22 +493,74 @@ export default function DocumentView() {
                 <TableHead className="text-primary">Réf.</TableHead>
                 <TableHead className="text-primary">Désignation</TableHead>
                 <TableHead className="text-primary">Qté</TableHead>
-                <TableHead className="text-primary">PU HT</TableHead>
+                <TableHead className="text-primary">PU TTC</TableHead>
+                <TableHead className="text-primary">Remise TTC</TableHead>
                 <TableHead className="text-primary">Total HT</TableHead>
+                {isEditing && <TableHead className="text-primary w-16">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {doc.lines.map((l) => {
-                const p = products.find((x) => x.id === l.productId)!;
+              {(isEditing ? editLines : doc.lines).map((l) => {
+                const p = products.find((x) => x.id === l.productId);
                 const priceHT = l.unitPrice / 1.2;
                 const remiseHT = (l.remiseAmount || 0) / 1.2;
                 const totalLineHT = (priceHT - remiseHT) * l.qty;
+                
+                if (isEditing) {
+                  return (
+                    <TableRow key={l.id}>
+                      <TableCell>{p?.sku || "-"}</TableCell>
+                      <TableCell>{l.description}</TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={l.qty}
+                          onChange={(e) => updateEditLine(l.id, "qty", parseInt(e.target.value) || 1)}
+                          className="w-20"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={l.unitPrice}
+                          onChange={(e) => updateEditLine(l.id, "unitPrice", parseFloat(e.target.value) || 0)}
+                          className="w-24"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={l.remiseAmount}
+                          onChange={(e) => updateEditLine(l.id, "remiseAmount", parseFloat(e.target.value) || 0)}
+                          className="w-24"
+                        />
+                      </TableCell>
+                      <TableCell>{fmtMAD(totalLineHT)}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeEditLine(l.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+                
                 return (
                   <TableRow key={l.id}>
-                    <TableCell>{p.sku}</TableCell>
+                    <TableCell>{p?.sku}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        {p.imageDataUrl && (
+                        {p?.imageDataUrl && (
                           <Dialog>
                             <DialogTrigger asChild>
                               <img src={p.imageDataUrl} alt={l.description} className="h-16 w-16 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity" />
@@ -439,13 +580,69 @@ export default function DocumentView() {
                       </div>
                     </TableCell>
                     <TableCell>{l.qty}</TableCell>
-                    <TableCell>{fmtMAD(priceHT)}</TableCell>
+                    <TableCell>{fmtMAD(l.unitPrice)}</TableCell>
+                    <TableCell>{fmtMAD(l.remiseAmount)}</TableCell>
                     <TableCell>{fmtMAD(totalLineHT)}</TableCell>
                   </TableRow>
                 );
               })}
             </TableBody>
           </Table>
+
+          {/* Add new line section (edit mode only) */}
+          {isEditing && (
+            <div className="mt-4 p-4 border rounded-lg bg-muted/30">
+              <h4 className="font-medium mb-3">Ajouter une ligne</h4>
+              <div className="grid grid-cols-5 gap-3 items-end">
+                <div className="col-span-2">
+                  <Label className="text-sm">Produit</Label>
+                  <Select
+                    value={newLine.productId}
+                    onValueChange={(v) => {
+                      const product = products.find(p => p.id === v);
+                      setNewLine({ ...newLine, productId: v, unitPrice: product?.price || 0 });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un produit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.sku} - {p.name} (Stock: {getProductStock(p.id)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm">Qté</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={newLine.qty}
+                    onChange={(e) => setNewLine({ ...newLine, qty: parseInt(e.target.value) || 1 })}
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">PU TTC</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newLine.unitPrice}
+                    onChange={(e) => setNewLine({ ...newLine, unitPrice: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <Button onClick={addNewLine} className="w-full">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Ajouter
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Styled Totals Section */}
           <div className="mt-4 space-y-2">
