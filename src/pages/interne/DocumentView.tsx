@@ -8,14 +8,18 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { getDocument, getProducts, getClients, getDepots, upsertDocument, getDB, nextCode, adjustStock, getCurrentUser, deleteDocument } from "@/store/localdb";
-import { Document, DocumentStatus, DocType } from "@/types";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { getDocument, getProducts, getClients, getDepots, upsertDocument, getDB, nextCode, adjustStock, getCurrentUser, deleteDocument, getStock } from "@/store/localdb";
+import { Document, DocumentStatus, DocType, DocumentLine } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { generateDocumentPdf } from "@/pdf/pdf";
 import { generateCertificatePdf } from "@/pdf/warranty";
 import { toast } from "@/hooks/use-toast";
 import { PaymentManager } from "@/components/PaymentManager";
-import { AlertTriangle, ArrowLeft, FileText, Printer, Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { AlertTriangle, ArrowLeft, FileText, Printer, Trash2, Pencil, Plus, X, Save, Check, ChevronsUpDown } from "lucide-react";
 
 type CertClientType = "revendeur" | "particulier" | "entreprise";
 
@@ -139,6 +143,13 @@ export default function InterneDocumentView() {
   const products = getProducts();
   const clients = getClients();
   const depots = getDepots();
+  const stock = getStock();
+
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editLines, setEditLines] = useState<DocumentLine[]>([]);
+  const [newLine, setNewLine] = useState({ productId: "", qty: 1, unitPrice: 0, remiseAmount: 0 });
+  const [productOpen, setProductOpen] = useState(false);
 
   if (!doc) {
     return (
@@ -250,6 +261,63 @@ export default function InterneDocumentView() {
     setRefreshKey((k) => k + 1);
   };
 
+  // Edit functions (admin only)
+  const startEditing = () => {
+    setEditLines([...doc.lines]);
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setEditLines([]);
+    setNewLine({ productId: "", qty: 1, unitPrice: 0, remiseAmount: 0 });
+    setIsEditing(false);
+  };
+
+  const saveEdits = () => {
+    if (editLines.length === 0) {
+      toast({ title: "Erreur", description: "Le document doit avoir au moins une ligne.", variant: "destructive" });
+      return;
+    }
+    upsertDocument({ ...doc, lines: editLines });
+    toast({ title: "Document modifié", description: `Les modifications ont été enregistrées.` });
+    setIsEditing(false);
+    setRefreshKey(k => k + 1);
+  };
+
+  const updateEditLine = (lineId: string, field: keyof DocumentLine, value: number | string) => {
+    setEditLines(prev => prev.map(l => l.id === lineId ? { ...l, [field]: value } : l));
+  };
+
+  const removeEditLine = (lineId: string) => {
+    setEditLines(prev => prev.filter(l => l.id !== lineId));
+  };
+
+  const addNewLine = () => {
+    if (!newLine.productId) {
+      toast({ title: "Erreur", description: "Veuillez sélectionner un produit.", variant: "destructive" });
+      return;
+    }
+    const product = products.find(p => p.id === newLine.productId);
+    if (!product) return;
+
+    const line: DocumentLine = {
+      id: `line_${Date.now()}`,
+      productId: newLine.productId,
+      description: product.name,
+      qty: newLine.qty,
+      unitPrice: newLine.unitPrice || product.price,
+      remiseAmount: newLine.remiseAmount
+    };
+    setEditLines(prev => [...prev, line]);
+    setNewLine({ productId: "", qty: 1, unitPrice: 0, remiseAmount: 0 });
+    setProductOpen(false);
+  };
+
+  const getProductStock = (productId: string) => {
+    if (!doc.depotId) return 0;
+    return stock.find(s => s.productId === productId && s.depotId === doc.depotId)?.qty || 0;
+  };
+
   const transformed = isTransformed();
 
   const statusVariant = (status: string) => {
@@ -314,7 +382,25 @@ export default function InterneDocumentView() {
             <Button variant="outline" onClick={() => generateDocumentPdf(doc).catch(console.error)}>
               PDF
             </Button>
-            {isAdmin && !transformed && (
+            {isAdmin && !transformed && !isEditing && (
+              <Button variant="outline" size="sm" onClick={startEditing}>
+                <Pencil className="h-4 w-4 mr-1" />
+                Modifier
+              </Button>
+            )}
+            {isEditing && (
+              <>
+                <Button variant="default" size="sm" onClick={saveEdits}>
+                  <Save className="h-4 w-4 mr-1" />
+                  Enregistrer
+                </Button>
+                <Button variant="outline" size="sm" onClick={cancelEditing}>
+                  <X className="h-4 w-4 mr-1" />
+                  Annuler
+                </Button>
+              </>
+            )}
+            {isAdmin && !transformed && !isEditing && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm">
@@ -379,8 +465,13 @@ export default function InterneDocumentView() {
       {doc.type === "FA" && <CertificateSection doc={doc} />}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Lignes</CardTitle>
+          {isEditing && (
+            <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+              Mode édition
+            </Badge>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
@@ -389,15 +480,68 @@ export default function InterneDocumentView() {
                 <TableHead>Réf.</TableHead>
                 <TableHead>Désignation</TableHead>
                 <TableHead className="text-center">Qté</TableHead>
-                <TableHead className="text-right">PU HT</TableHead>
+                <TableHead className="text-right">PU TTC</TableHead>
+                <TableHead className="text-right">Remise TTC</TableHead>
                 <TableHead className="text-right">Total HT</TableHead>
+                {isEditing && <TableHead className="w-16">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {doc.lines.map((l) => {
+              {(isEditing ? editLines : doc.lines).map((l) => {
                 const p = products.find((x) => x.id === l.productId);
                 const htUnit = doc.includeTVA ? l.unitPrice / 1.2 : l.unitPrice;
-                const totalLine = htUnit * l.qty;
+                const remiseHT = doc.includeTVA ? (l.remiseAmount || 0) / 1.2 : (l.remiseAmount || 0);
+                const totalLine = (htUnit - remiseHT) * l.qty;
+                
+                if (isEditing) {
+                  return (
+                    <TableRow key={l.id}>
+                      <TableCell>{p?.sku || "-"}</TableCell>
+                      <TableCell>{l.description}</TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={l.qty}
+                          onChange={(e) => updateEditLine(l.id, "qty", parseInt(e.target.value) || 1)}
+                          className="w-20"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={l.unitPrice}
+                          onChange={(e) => updateEditLine(l.id, "unitPrice", parseFloat(e.target.value) || 0)}
+                          className="w-24"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={l.remiseAmount}
+                          onChange={(e) => updateEditLine(l.id, "remiseAmount", parseFloat(e.target.value) || 0)}
+                          className="w-24"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">{fmtMAD(totalLine)}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeEditLine(l.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+                
                 return (
                   <TableRow key={l.id}>
                     <TableCell>{p?.sku}</TableCell>
@@ -417,7 +561,8 @@ export default function InterneDocumentView() {
                       </div>
                     </TableCell>
                     <TableCell className="text-center">{l.qty}</TableCell>
-                    <TableCell className="text-right">{fmtMAD(htUnit)}</TableCell>
+                    <TableCell className="text-right">{fmtMAD(l.unitPrice)}</TableCell>
+                    <TableCell className="text-right">{fmtMAD(l.remiseAmount)}</TableCell>
                     <TableCell className="text-right">{fmtMAD(totalLine)}</TableCell>
                   </TableRow>
                 );
@@ -425,29 +570,104 @@ export default function InterneDocumentView() {
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={4} className="text-right font-medium">Total H.T (HR)</TableCell>
+                <TableCell colSpan={isEditing ? 5 : 5} className="text-right font-medium">Total H.T (HR)</TableCell>
                 <TableCell className="text-right">{fmtMAD(totalHT)}</TableCell>
+                {isEditing && <TableCell />}
               </TableRow>
               <TableRow>
-                <TableCell colSpan={4} className="text-right font-medium">Remise H.T</TableCell>
+                <TableCell colSpan={isEditing ? 5 : 5} className="text-right font-medium">Remise H.T</TableCell>
                 <TableCell className="text-right">{fmtMAD(totalRemise)}</TableCell>
+                {isEditing && <TableCell />}
               </TableRow>
               <TableRow>
-                <TableCell colSpan={4} className="text-right font-medium">Total H.T (NET)</TableCell>
+                <TableCell colSpan={isEditing ? 5 : 5} className="text-right font-medium">Total H.T (NET)</TableCell>
                 <TableCell className="text-right">{fmtMAD(totalHTNet)}</TableCell>
+                {isEditing && <TableCell />}
               </TableRow>
               {doc.includeTVA && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-right font-medium">T.V.A (20%)</TableCell>
+                  <TableCell colSpan={isEditing ? 5 : 5} className="text-right font-medium">T.V.A (20%)</TableCell>
                   <TableCell className="text-right">{fmtMAD(tvaAmount)}</TableCell>
+                  {isEditing && <TableCell />}
                 </TableRow>
               )}
               <TableRow className="bg-primary/5">
-                <TableCell colSpan={4} className="text-right font-bold">NET A PAYER T.T.C</TableCell>
+                <TableCell colSpan={isEditing ? 5 : 5} className="text-right font-bold">NET A PAYER T.T.C</TableCell>
                 <TableCell className="text-right font-bold">{fmtMAD(totalTTC)}</TableCell>
+                {isEditing && <TableCell />}
               </TableRow>
             </TableFooter>
           </Table>
+
+          {/* Add new line section (edit mode only) */}
+          {isEditing && (
+            <div className="mt-4 p-4 border rounded-lg bg-muted/30">
+              <h4 className="font-medium mb-3">Ajouter une ligne</h4>
+              <div className="grid grid-cols-5 gap-3 items-end">
+                <div className="col-span-2">
+                  <Label className="text-sm">Produit</Label>
+                  <Popover open={productOpen} onOpenChange={setProductOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" className="w-full justify-between">
+                        {newLine.productId 
+                          ? products.find(p => p.id === newLine.productId)?.name 
+                          : "Sélectionner un produit"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0">
+                      <Command>
+                        <CommandInput placeholder="Rechercher un produit..." />
+                        <CommandList>
+                          <CommandEmpty>Aucun produit trouvé.</CommandEmpty>
+                          <CommandGroup>
+                            {products.map(p => (
+                              <CommandItem
+                                key={p.id}
+                                value={`${p.sku} ${p.name}`}
+                                onSelect={() => {
+                                  setNewLine({ ...newLine, productId: p.id, unitPrice: p.price });
+                                  setProductOpen(false);
+                                }}
+                              >
+                                <Check className={`mr-2 h-4 w-4 ${newLine.productId === p.id ? "opacity-100" : "opacity-0"}`} />
+                                {p.sku} - {p.name} (Stock: {getProductStock(p.id)})
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label className="text-sm">Qté</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={newLine.qty}
+                    onChange={(e) => setNewLine({ ...newLine, qty: parseInt(e.target.value) || 1 })}
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">PU TTC</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newLine.unitPrice}
+                    onChange={(e) => setNewLine({ ...newLine, unitPrice: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <Button onClick={addNewLine} className="w-full">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Ajouter
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
