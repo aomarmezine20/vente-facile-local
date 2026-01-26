@@ -150,6 +150,8 @@ export default function InterneDocumentView() {
   const [editLines, setEditLines] = useState<DocumentLine[]>([]);
   const [newLine, setNewLine] = useState({ productId: "", qty: 1, unitPrice: 0, remiseAmount: 0 });
   const [productOpen, setProductOpen] = useState(false);
+  const [editClientId, setEditClientId] = useState<string | undefined>(undefined);
+  const [editDepotId, setEditDepotId] = useState<string | undefined>(undefined);
 
   if (!doc) {
     return (
@@ -264,12 +266,16 @@ export default function InterneDocumentView() {
   // Edit functions (admin only)
   const startEditing = () => {
     setEditLines([...doc.lines]);
+    setEditClientId(doc.clientId);
+    setEditDepotId(doc.depotId);
     setIsEditing(true);
   };
 
   const cancelEditing = () => {
     setEditLines([]);
     setNewLine({ productId: "", qty: 1, unitPrice: 0, remiseAmount: 0 });
+    setEditClientId(undefined);
+    setEditDepotId(undefined);
     setIsEditing(false);
   };
 
@@ -278,7 +284,12 @@ export default function InterneDocumentView() {
       toast({ title: "Erreur", description: "Le document doit avoir au moins une ligne.", variant: "destructive" });
       return;
     }
-    upsertDocument({ ...doc, lines: editLines });
+    upsertDocument({ 
+      ...doc, 
+      lines: editLines,
+      clientId: editClientId,
+      depotId: editDepotId
+    });
     toast({ title: "Document modifié", description: `Les modifications ont été enregistrées.` });
     setIsEditing(false);
     setRefreshKey(k => k + 1);
@@ -441,12 +452,44 @@ export default function InterneDocumentView() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Client</p>
-              <p>{client?.name || "-"}</p>
-              {client?.code && <p className="text-xs text-muted-foreground">{client.code}</p>}
+              {isEditing ? (
+                <Select value={editClientId} onValueChange={setEditClientId}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Sélectionner un client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} ({c.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <>
+                  <p>{client?.name || "-"}</p>
+                  {client?.code && <p className="text-xs text-muted-foreground">{client.code}</p>}
+                </>
+              )}
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Dépôt</p>
-              <p>{depot?.name || "-"}</p>
+              {isEditing ? (
+                <Select value={editDepotId} onValueChange={setEditDepotId}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Sélectionner un dépôt" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {depots.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p>{depot?.name || "-"}</p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <p className="text-sm text-muted-foreground">Inclure TVA (20%):</p>
