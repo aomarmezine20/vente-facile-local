@@ -17,6 +17,7 @@ import { generateCertificatePdf } from "@/pdf/warranty";
 import { toast } from "@/hooks/use-toast";
 import { PaymentManager } from "@/components/PaymentManager";
 import { Label } from "@/components/ui/label";
+import { SearchableCombobox } from "@/components/SearchableCombobox";
 import { FileText, Printer, ArrowLeft, Trash2, Pencil, Plus, X, Save } from "lucide-react";
 
 function nextType(t: DocType): DocType | null {
@@ -458,20 +459,21 @@ export default function DocumentView() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{doc.mode === "vente" ? "Client" : "Fournisseur"}</p>
-              {isEditing ? (
+{isEditing ? (
                 doc.mode === "vente" ? (
-                  <Select value={editClientId} onValueChange={setEditClientId}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Sélectionner un client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name} ({c.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableCombobox
+                    options={clients.map((c) => ({
+                      value: c.id,
+                      label: `${c.name} (${c.code})`,
+                      sublabel: c.phone || c.email
+                    }))}
+                    value={editClientId}
+                    onValueChange={setEditClientId}
+                    placeholder="Sélectionner un client"
+                    searchPlaceholder="Rechercher un client..."
+                    emptyMessage="Aucun client trouvé."
+                    className="mt-1"
+                  />
                 ) : (
                   <Input
                     value={editVendorName}
@@ -487,18 +489,18 @@ export default function DocumentView() {
             <div>
               <p className="text-sm text-muted-foreground">Dépôt</p>
               {isEditing ? (
-                <Select value={editDepotId} onValueChange={setEditDepotId}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Sélectionner un dépôt" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {depots.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableCombobox
+                  options={depots.map((d) => ({
+                    value: d.id,
+                    label: d.name
+                  }))}
+                  value={editDepotId}
+                  onValueChange={setEditDepotId}
+                  placeholder="Sélectionner un dépôt"
+                  searchPlaceholder="Rechercher un dépôt..."
+                  emptyMessage="Aucun dépôt trouvé."
+                  className="mt-1"
+                />
               ) : (
                 <p>{depot}</p>
               )}
