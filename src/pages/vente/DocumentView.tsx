@@ -169,6 +169,9 @@ export default function DocumentView() {
   const [editLines, setEditLines] = useState<DocumentLine[]>([]);
   const [newLine, setNewLine] = useState({ productId: "", qty: 1, unitPrice: 0, remiseAmount: 0 });
   const [productOpen, setProductOpen] = useState(false);
+  const [editClientId, setEditClientId] = useState<string | undefined>(undefined);
+  const [editVendorName, setEditVendorName] = useState<string>("");
+  const [editDepotId, setEditDepotId] = useState<string | undefined>(undefined);
 
   // MANDATORY CALCULATION RULES:
   // 1) All prices entered are TTC, all remises are TTC
@@ -265,12 +268,18 @@ export default function DocumentView() {
   // Edit functions (admin only)
   const startEditing = () => {
     setEditLines([...doc.lines]);
+    setEditClientId(doc.clientId);
+    setEditVendorName(doc.vendorName || "");
+    setEditDepotId(doc.depotId);
     setIsEditing(true);
   };
 
   const cancelEditing = () => {
     setEditLines([]);
     setNewLine({ productId: "", qty: 1, unitPrice: 0, remiseAmount: 0 });
+    setEditClientId(undefined);
+    setEditVendorName("");
+    setEditDepotId(undefined);
     setIsEditing(false);
   };
 
@@ -279,7 +288,21 @@ export default function DocumentView() {
       toast({ title: "Erreur", description: "Le document doit avoir au moins une ligne.", variant: "destructive" });
       return;
     }
-    upsertDocument({ ...doc, lines: editLines });
+    if (doc.mode === "vente" && !editClientId) {
+      toast({ title: "Erreur", description: "Veuillez sélectionner un client.", variant: "destructive" });
+      return;
+    }
+    if (doc.mode === "achat" && !editVendorName.trim()) {
+      toast({ title: "Erreur", description: "Veuillez saisir un fournisseur.", variant: "destructive" });
+      return;
+    }
+    upsertDocument({ 
+      ...doc, 
+      lines: editLines,
+      clientId: editClientId,
+      vendorName: editVendorName || undefined,
+      depotId: editDepotId
+    });
     toast({ title: "Document modifié", description: `Les modifications ont été enregistrées.` });
     setIsEditing(false);
     setRefreshKey(k => k + 1);
@@ -435,11 +458,50 @@ export default function DocumentView() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{doc.mode === "vente" ? "Client" : "Fournisseur"}</p>
-              <p>{client}</p>
+              {isEditing ? (
+                doc.mode === "vente" ? (
+                  <Select value={editClientId} onValueChange={setEditClientId}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Sélectionner un client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} ({c.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={editVendorName}
+                    onChange={(e) => setEditVendorName(e.target.value)}
+                    placeholder="Nom du fournisseur"
+                    className="mt-1"
+                  />
+                )
+              ) : (
+                <p>{client}</p>
+              )}
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Dépôt</p>
-              <p>{depot}</p>
+              {isEditing ? (
+                <Select value={editDepotId} onValueChange={setEditDepotId}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Sélectionner un dépôt" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {depots.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p>{depot}</p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <p className="text-sm text-muted-foreground">Inclure TVA (20%):</p>
