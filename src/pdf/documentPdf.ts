@@ -189,7 +189,7 @@ function buildPaymentLines(payments: Payment[], finalTotal: number): PaymentDisp
     autre: "Autre",
   };
 
-  const lines = payments.slice(0, 4).map((payment) => ({
+  const lines: PaymentDisplayLine[] = payments.slice(0, 4).map((payment) => ({
     text: `• ${methodLabels[payment.method] || payment.method}: ${formatPdfMAD(payment.amount)} MAD (${new Date(payment.date).toLocaleDateString("fr-FR")})`,
     tone: "default" as const,
   }));
@@ -604,7 +604,8 @@ function drawTotalsAndPayment(pdf: jsPDF, context: DocumentPdfContext, style: Pd
   let totalsY = startY - 6;
 
   context.totalsRows.forEach((row) => {
-    pdf.setFillColor(...(row.highlight ? COLORS.highlight : [255, 255, 255]));
+    const fillColor: PdfColor = row.highlight ? COLORS.highlight : [255, 255, 255];
+    pdf.setFillColor(...fillColor);
     pdf.rect(totalsX, totalsY, labelColWidth, style.totalsRowHeight, "FD");
     pdf.rect(totalsX + labelColWidth, totalsY, valueColWidth, style.totalsRowHeight, "FD");
 
