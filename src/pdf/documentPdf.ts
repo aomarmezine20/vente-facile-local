@@ -413,13 +413,14 @@ function drawInfoSection(pdf: jsPDF, context: DocumentPdfContext, scale: number,
   pdf.setTextColor(...COLORS.dark);
   pdf.text(`Date: ${new Date(context.document.date).toLocaleDateString("fr-FR")}`, leftX + 6, boxY + infoBoxHeight * 0.58);
 
-  pdf.setFontSize(contentFontSize - 0.1);
-  pdf.setTextColor(...COLORS.muted);
-  pdf.text(`Type: ${context.documentLabel}`, leftX + boxWidth - 6, boxY + infoBoxHeight * 0.58, { align: "right" });
-
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(contentFontSize);
-  const clientNameLines = pdf.splitTextToSize(context.clientName, boxWidth - 10);
+  // Reserve horizontal space on the right for the client code so the name never overlaps it
+  const codeReserve = context.client?.code
+    ? pdf.getTextWidth(`Code: ${context.client.code}`) + 6
+    : 0;
+  const nameMaxWidth = boxWidth - 10 - codeReserve;
+  const clientNameLines = pdf.splitTextToSize(context.clientName, Math.max(nameMaxWidth, 20));
   const addressLines = context.client?.address ? pdf.splitTextToSize(context.client.address, boxWidth - 10) : [];
   const clientMeta = context.client?.type === "entreprise" && context.client.ice
     ? `ICE: ${context.client.ice}`
