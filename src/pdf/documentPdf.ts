@@ -415,12 +415,7 @@ function drawInfoSection(pdf: jsPDF, context: DocumentPdfContext, scale: number,
 
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(contentFontSize);
-  // Reserve horizontal space on the right for the client code so the name never overlaps it
-  const codeReserve = context.client?.code
-    ? pdf.getTextWidth(`Code: ${context.client.code}`) + 6
-    : 0;
-  const nameMaxWidth = boxWidth - 10 - codeReserve;
-  const clientNameLines = pdf.splitTextToSize(context.clientName, Math.max(nameMaxWidth, 20));
+  const clientNameLines = pdf.splitTextToSize(context.clientName, boxWidth - 10);
   const addressLines = context.client?.address ? pdf.splitTextToSize(context.client.address, boxWidth - 10) : [];
   const clientMeta = context.client?.type === "entreprise" && context.client.ice
     ? `ICE: ${context.client.ice}`
@@ -429,8 +424,10 @@ function drawInfoSection(pdf: jsPDF, context: DocumentPdfContext, scale: number,
       : context.client?.email
         ? `Email: ${context.client.email}`
         : "";
+  // Extra top padding so the client name sits clearly BELOW the code line
+  const clientTopPadding = context.client?.code ? 11 : 7;
   const clientContentLineCount = clientNameLines.length + addressLines.length + (clientMeta ? 1 : 0);
-  const clientBoxHeight = Math.max(clamp(26 * scale, 24, 34), 9 + clientContentLineCount * lineHeight + 7);
+  const clientBoxHeight = Math.max(clamp(26 * scale, 24, 34), clientTopPadding + clientContentLineCount * lineHeight + 7);
 
   pdf.setFillColor(...COLORS.light);
   pdf.roundedRect(rightX, boxY, boxWidth, clientBoxHeight, 2, 2, "FD");
@@ -442,7 +439,7 @@ function drawInfoSection(pdf: jsPDF, context: DocumentPdfContext, scale: number,
     pdf.text(`Code: ${context.client.code}`, rightX + boxWidth - 5, boxY + 5, { align: "right" });
   }
 
-  let textY = boxY + 7;
+  let textY = boxY + clientTopPadding;
 
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(clamp(9.4 * scale, 8.2, 10.2));
