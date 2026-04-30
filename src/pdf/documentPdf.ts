@@ -219,8 +219,9 @@ function buildContext(doc: Document): DocumentPdfContext {
   const tableData = doc.lines.map((line, index) => {
     const product = productMap.get(line.productId);
     const priceHT = line.unitPrice / 1.2;
-    const remiseHT = (line.remiseAmount || 0) / 1.2;
-    const totalLineHT = (priceHT - remiseHT) * line.qty;
+    // Display Total H.T = P.U.H.T × QTE so the row math is visually consistent.
+    // Remises are reflected in the totals summary (Remise H.T / Total H.T NET) below.
+    const totalLineHT = priceHT * line.qty;
 
     return [
       String(index + 1),
