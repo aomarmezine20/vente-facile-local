@@ -5,51 +5,77 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { getDB, setDB } from "@/store/localdb";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { getCurrentUser, getDB, setDB } from "@/store/localdb";
 import { Document, Payment, PaymentMethod } from "@/types";
 import { fmtMAD, todayISO } from "@/utils/format";
 import { toast } from "@/hooks/use-toast";
-import { CreditCard, Banknote, Receipt } from "lucide-react";
+import { CreditCard, Banknote, Receipt, Pencil, Trash2 } from "lucide-react";
 
 interface PaymentManagerProps {
   document: Document;
 }
 
+const METHOD_LABELS: Record<PaymentMethod, string> = {
+  especes: "Espèces",
+  cheque: "Chèque",
+  versement: "Versement",
+  virement: "Virement",
+  traite: "Traite",
+  autre: "Autre",
+};
+
 export function PaymentManager({ document }: PaymentManagerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const currentUser = getCurrentUser();
+  const isAdmin = currentUser?.role === "admin";
+
   const db = getDB();
-  const documentPayments = (db.payments || []).filter(p => p.documentId === document.id);
+  const documentPayments = (db.payments || []).filter((p) => p.documentId === document.id);
   const totalPaid = documentPayments.reduce((sum, p) => sum + p.amount, 0);
-  
+
   // MANDATORY CALCULATION: Prices and remises are TTC, convert to HT
   const totalHT = document.lines.reduce((s, l) => {
-    const priceHT = l.unitPrice / 1.2; // Price TTC to HT
-    const remiseHT = (l.remiseAmount || 0) / 1.2; // Remise TTC to HT
+    const priceHT = l.unitPrice / 1.2;
+    const remiseHT = (l.remiseAmount || 0) / 1.2;
     return s + (priceHT - remiseHT) * l.qty;
   }, 0);
-  const tvaAmount = totalHT * 0.2; // TVA 20% on net HT
-  const documentTotal = totalHT + tvaAmount; // Total TTC for payment
+  const tvaAmount = totalHT * 0.2;
+  const documentTotal = totalHT + tvaAmount;
   const remainingAmount = documentTotal - totalPaid;
 
   const [newPayment, setNewPayment] = useState({
     amount: remainingAmount,
     method: "especes" as PaymentMethod,
     checkNumber: "",
-    notes: ""
+    notes: "",
   });
+
+  const recomputeStatus = (docId: string) => {
+    setDB((d) => {
+      const docTotalPaid = (d.payments || [])
+        .filter((p) => p.documentId === docId)
+        .reduce((s, p) => s + p.amount, 0);
+      const doc = d.documents.find((x) => x.id === docId);
+      if (doc) {
+        doc.totalPaid = docTotalPaid;
+        if (docTotalPaid >= documentTotal - 0.01) doc.paymentStatus = "paid";
+        else if (docTotalPaid > 0) doc.paymentStatus = "partial";
+        else doc.paymentStatus = "unpaid";
+      }
+    });
+  };
 
   const addPayment = () => {
     if (!newPayment.amount || newPayment.amount <= 0) {
       toast({ title: "Erreur", description: "Le montant doit être supérieur à 0", variant: "destructive" });
       return;
     }
-
-    if (newPayment.amount > remainingAmount) {
+    if (newPayment.amount > remainingAmount + 0.01) {
       toast({ title: "Erreur", description: "Le montant ne peut pas dépasser le solde restant", variant: "destructive" });
       return;
     }
-
     if (newPayment.method === "cheque" && !newPayment.checkNumber.trim()) {
       toast({ title: "Erreur", description: "Numéro de chèque requis", variant: "destructive" });
       return;
@@ -62,73 +88,79 @@ export function PaymentManager({ document }: PaymentManagerProps) {
       method: newPayment.method,
       date: todayISO(),
       checkNumber: newPayment.method === "cheque" ? newPayment.checkNumber : undefined,
-      notes: newPayment.notes || undefined
+      notes: newPayment.notes || undefined,
     };
 
-    setDB(db => {
-      if (!db.payments) {
-        db.payments = [];
-      }
-      db.payments.push(payment);
-      
-      // Update document payment status
-      const doc = db.documents.find(d => d.id === document.id);
-      if (doc) {
-        const newTotalPaid = totalPaid + newPayment.amount;
-        doc.totalPaid = newTotalPaid;
-        
-        if (newTotalPaid >= documentTotal) {
-          doc.paymentStatus = "paid";
-        } else if (newTotalPaid > 0) {
-          doc.paymentStatus = "partial";
-        } else {
-          doc.paymentStatus = "unpaid";
-        }
-      }
+    setDB((d) => {
+      if (!d.payments) d.payments = [];
+      d.payments.push(payment);
     });
+    recomputeStatus(document.id);
 
     toast({ title: "Règlement ajouté", description: `${fmtMAD(newPayment.amount)} enregistré` });
-    setNewPayment({
-      amount: 0,
-      method: "especes",
-      checkNumber: "",
-      notes: ""
-    });
+    setNewPayment({ amount: 0, method: "especes", checkNumber: "", notes: "" });
     setIsOpen(false);
+  };
+
+  const saveEdit = () => {
+    if (!editingPayment) return;
+    if (!editingPayment.amount || editingPayment.amount <= 0) {
+      toast({ title: "Erreur", description: "Le montant doit être supérieur à 0", variant: "destructive" });
+      return;
+    }
+    // Allowed total = documentTotal; check sum of other payments + this one
+    const otherSum = documentPayments
+      .filter((p) => p.id !== editingPayment.id)
+      .reduce((s, p) => s + p.amount, 0);
+    if (otherSum + editingPayment.amount > documentTotal + 0.01) {
+      toast({ title: "Erreur", description: "Le total des règlements dépasse le total du document", variant: "destructive" });
+      return;
+    }
+    if (editingPayment.method === "cheque" && !(editingPayment.checkNumber || "").trim()) {
+      toast({ title: "Erreur", description: "Numéro de chèque requis", variant: "destructive" });
+      return;
+    }
+
+    setDB((d) => {
+      const p = (d.payments || []).find((x) => x.id === editingPayment.id);
+      if (p) {
+        p.amount = editingPayment.amount;
+        p.method = editingPayment.method;
+        p.checkNumber = editingPayment.method === "cheque" ? editingPayment.checkNumber : undefined;
+        p.notes = editingPayment.notes;
+      }
+    });
+    recomputeStatus(document.id);
+    toast({ title: "Règlement modifié" });
+    setEditingPayment(null);
+  };
+
+  const deletePayment = (paymentId: string) => {
+    if (!confirm("Supprimer ce règlement ?")) return;
+    setDB((d) => {
+      d.payments = (d.payments || []).filter((p) => p.id !== paymentId);
+    });
+    recomputeStatus(document.id);
+    toast({ title: "Règlement supprimé" });
   };
 
   const getPaymentIcon = (method: PaymentMethod) => {
     switch (method) {
       case "especes": return <Banknote className="h-4 w-4" />;
       case "cheque": return <Receipt className="h-4 w-4" />;
-      case "versement": 
+      case "versement":
       case "virement": return <CreditCard className="h-4 w-4" />;
       case "traite": return <Receipt className="h-4 w-4" />;
       case "autre": return <Receipt className="h-4 w-4" />;
     }
   };
 
-  const getPaymentMethodLabel = (method: PaymentMethod) => {
-    switch (method) {
-      case "especes": return "Espèces";
-      case "cheque": return "Chèque";
-      case "versement": return "Versement";
-      case "virement": return "Virement";
-      case "traite": return "Traite";
-      case "autre": return "Autre";
-    }
-  };
-
   const getPaymentStatusBadge = () => {
     const status = document.paymentStatus || (totalPaid >= documentTotal ? "paid" : totalPaid > 0 ? "partial" : "unpaid");
-    
     switch (status) {
-      case "paid":
-        return <Badge className="bg-green-100 text-green-800">Payé</Badge>;
-      case "partial":
-        return <Badge variant="secondary">Partiellement payé</Badge>;
-      default:
-        return <Badge variant="destructive">Non payé</Badge>;
+      case "paid": return <Badge className="bg-green-100 text-green-800">Payé</Badge>;
+      case "partial": return <Badge variant="secondary">Partiellement payé</Badge>;
+      default: return <Badge variant="destructive">Non payé</Badge>;
     }
   };
 
@@ -170,10 +202,12 @@ export function PaymentManager({ document }: PaymentManagerProps) {
           </div>
         </div>
 
-        {remainingAmount > 0 && (
+        {remainingAmount > 0.01 && (
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full">Ajouter un règlement</Button>
+              <Button className="w-full" onClick={() => setNewPayment((s) => ({ ...s, amount: remainingAmount }))}>
+                Ajouter un règlement
+              </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -187,22 +221,17 @@ export function PaymentManager({ document }: PaymentManagerProps) {
                     step="0.01"
                     max={remainingAmount}
                     value={newPayment.amount}
-                    onChange={(e) => setNewPayment(s => ({ ...s, amount: Number(e.target.value) }))}
+                    onChange={(e) => setNewPayment((s) => ({ ...s, amount: Number(e.target.value) }))}
                   />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Mode de paiement</label>
-                  <Select value={newPayment.method} onValueChange={(v: PaymentMethod) => setNewPayment(s => ({ ...s, method: v }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Select value={newPayment.method} onValueChange={(v: PaymentMethod) => setNewPayment((s) => ({ ...s, method: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="especes">Espèces</SelectItem>
-                      <SelectItem value="cheque">Chèque</SelectItem>
-                      <SelectItem value="versement">Versement</SelectItem>
-                      <SelectItem value="virement">Virement</SelectItem>
-                      <SelectItem value="traite">Traite</SelectItem>
-                      <SelectItem value="autre">Autre</SelectItem>
+                      {(Object.keys(METHOD_LABELS) as PaymentMethod[]).map((m) => (
+                        <SelectItem key={m} value={m}>{METHOD_LABELS[m]}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -211,7 +240,7 @@ export function PaymentManager({ document }: PaymentManagerProps) {
                     <label className="text-sm font-medium">Numéro de chèque</label>
                     <Input
                       value={newPayment.checkNumber}
-                      onChange={(e) => setNewPayment(s => ({ ...s, checkNumber: e.target.value }))}
+                      onChange={(e) => setNewPayment((s) => ({ ...s, checkNumber: e.target.value }))}
                       placeholder="Numéro de chèque"
                     />
                   </div>
@@ -220,7 +249,7 @@ export function PaymentManager({ document }: PaymentManagerProps) {
                   <label className="text-sm font-medium">Notes (optionnel)</label>
                   <Input
                     value={newPayment.notes}
-                    onChange={(e) => setNewPayment(s => ({ ...s, notes: e.target.value }))}
+                    onChange={(e) => setNewPayment((s) => ({ ...s, notes: e.target.value }))}
                     placeholder="Notes ou références"
                   />
                 </div>
@@ -240,6 +269,7 @@ export function PaymentManager({ document }: PaymentManagerProps) {
                   <TableHead>Mode</TableHead>
                   <TableHead>Référence</TableHead>
                   <TableHead>Montant</TableHead>
+                  {isAdmin && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -249,19 +279,96 @@ export function PaymentManager({ document }: PaymentManagerProps) {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {getPaymentIcon(payment.method)}
-                        {getPaymentMethodLabel(payment.method)}
+                        {METHOD_LABELS[payment.method]}
                       </div>
                     </TableCell>
                     <TableCell>
                       {payment.checkNumber ? `Chèque #${payment.checkNumber}` : payment.notes || "-"}
                     </TableCell>
                     <TableCell className="font-medium">{fmtMAD(payment.amount)}</TableCell>
+                    {isAdmin && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingPayment({ ...payment })}
+                            title="Modifier"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deletePayment(payment.id)}
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
         )}
+
+        <Dialog open={!!editingPayment} onOpenChange={(o) => !o && setEditingPayment(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Modifier le règlement</DialogTitle>
+            </DialogHeader>
+            {editingPayment && (
+              <div className="grid gap-4">
+                <div>
+                  <label className="text-sm font-medium">Montant</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editingPayment.amount}
+                    onChange={(e) => setEditingPayment((p) => p ? { ...p, amount: Number(e.target.value) } : p)}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Mode de paiement</label>
+                  <Select
+                    value={editingPayment.method}
+                    onValueChange={(v: PaymentMethod) => setEditingPayment((p) => p ? { ...p, method: v } : p)}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(METHOD_LABELS) as PaymentMethod[]).map((m) => (
+                        <SelectItem key={m} value={m}>{METHOD_LABELS[m]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {editingPayment.method === "cheque" && (
+                  <div>
+                    <label className="text-sm font-medium">Numéro de chèque</label>
+                    <Input
+                      value={editingPayment.checkNumber || ""}
+                      onChange={(e) => setEditingPayment((p) => p ? { ...p, checkNumber: e.target.value } : p)}
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium">Notes</label>
+                  <Input
+                    value={editingPayment.notes || ""}
+                    onChange={(e) => setEditingPayment((p) => p ? { ...p, notes: e.target.value } : p)}
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingPayment(null)}>Annuler</Button>
+              <Button onClick={saveEdit}>Enregistrer</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
